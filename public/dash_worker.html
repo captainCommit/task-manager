@@ -1,0 +1,1591 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="This application is a pc based task manager use for small teams to arrange and manage their individual tasks">
+    <meta name="keywords" content="Task manager,scheduler,JIRA,task,task management,tools,lowcode tool">
+    <meta name="author" content="Suparno Karmakar">
+    <link rel="stylesheet" href="assets/font-awesome-4.7.0/css/font-awesome.min.css">
+    <link rel="stylesheet" href="assets/css/bootstrap.min.css">
+    <link rel="stylesheet" href="assets/css/daterangepicker.min.css">
+    <link rel="stylesheet" href="assets/css/bootstrap-vue.min.css">
+    <link rel="stylesheet" href="assets/css/style.min.css">
+    <title>Worker Dashboard</title>
+</head>
+<body>
+    <div class="container-fluid" id="app"style="padding:0px;overflow-x:hidden;">
+        <nav class="navbar navbar-expand-lg navbar-dark justify-content-between" style="background-color: #563d7c;">
+            <a class="navbar-brand" href="/dash_worker">Task Manager</a>
+            <ul class="navbar-nav ml-auto">
+                <li class="nav-item active">
+                  <a class="nav-link" href="#">Hi, {{user.username}}!</a>
+                </li>
+                <li class="nav-item dropdown dropleft">
+                    <a class="nav-link" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" v-on:click="()=>{notifications.currentNotificationCount = 0;notifications.newNotification = false;}">
+                        <i class="fa fa-bell" style="font-size: 1.4rem;" v-bind:class="{'deep' : notifications.newNotification}"></i>
+                        <span class="badge badge-pill badge-warning badge-notify">{{notifications.currentNotificationCount === 0 ? "" : notifications.currentNotificationCount}}</span>
+                    </a>
+                    <div class="dropdown-menu" aria-labelledby="navbarDropdown" style="width:300px;padding:0px;">
+                        <div class="alert alert-light" role="alert" v-for="(notification,index) of notifications.dropdown" :id="index" style="padding: 0.05rem;margin-bottom:0.25rem;">
+                            <p class="alert-heading small row justify-content-between" style="margin-bottom: 2px;"><strong class="col-auto">{{notification.title}}</strong><span class="col-auto text-muted mr-1" style="text-align: right;">{{notification.creationDate}}</span></p>
+                            <p class="mb-2 small ml-1">{{notification.description}} by {{workerMap[notification.from]}}</p>
+                            <div class="row justify-content-end">
+                                <a href="#" class="small float-right mr-4" v-on:click="viewFromNotification(notification.task_id)" v-if="notification.allowView">View task</a>
+                            </div>
+                            <hr style="margin-top:3px !important;margin-bottom:0px !important;">
+                        </div>
+                        <div class="alert alert-light" v-if="notifications.notOk">
+                            <strong>Notification service is not working properly</strong>
+                        </div>
+                        <span class="small row justify-content-center">
+                            <div class="col-6 mb-1 text-center">
+                                <a href="#" v-on:click="openNotificationsModal()" >See all notifications</a>
+                            </div>
+                        </span>
+                    </div>
+                </li>
+                <li class="nav-item dropdown dropleft">
+                    <a class="nav-link" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                        <i class="fa fa-bars" style="font-size: 1.4rem;"></i>
+                    </a>
+                    <div class="dropdown-menu" aria-labelledby="navbarDropdown">
+                        <a class="dropdown-item" href="#" v-on:click="openNotificationsModal()">Notifications</a>
+                        <a class="dropdown-item" href="/stats" target="_blank">View Stats</a>
+                        <a class="dropdown-item" href="#" v-on:click="logout()">Logout</a>
+                    </div>
+                </li>
+                <li class="nav-item">
+                    <a href="#" class="nav-link" v-on:click="openInfoModal()" data-toggle="tooltip" data-placement="bottom" title="Help">
+                        <i class="fa fa-info-circle" style="font-size: 1.4rem;"></i>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+        <div class="modal fade" id="sortmodal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+              <div class="modal-content">
+                <div class="modal-header">
+                  <h5 class="modal-title ml-2 mt-2" id="exampleModalLabel">Select Sort Criteria</h5>
+                  <span aria-hidden="true" v-on:click="closeSortModal()" class="mr-2" style="font-size:2rem;font-weight:500;cursor:pointer;">&times;</span>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-6">
+                            <select name="" id="fieldname" class="form-control" v-model="taskFilter.sort.column">
+                                <option value="" disabled selected>Choose sort column</option>
+                                <option value="creationDate">Creation Date</option>
+                                <option value="lastEditDate">Last Edit Date</option>
+                                <option value="assignmentDate">Assignment Date</option>
+                                <option value="startDate">Start Date</option>
+                                <option value="reviewDate">Review Date</option>
+                                <option value="revisionDate">Re-open Date</option>
+                            </select>
+                        </div>
+                        <div class="col-6">
+                            <select name="" id="mode" class="form-control" v-model="taskFilter.sort.mode">
+                                <option value="" disabled selected>Choose sort mode</option>
+                                <option value="asc">Ascending</option>
+                                <option value="desc">Descending</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                  <button type="button" class="btn btn-secondary" v-on:click="closeSortModal()">Close</button>
+                  <button type="button" class="btn btn-info" v-on:click="resetSort()">Reset</button>
+                  <button type="button" class="btn btn-primary" v-on:click="sortTask()">Sort Tasks</button>
+                </div>
+              </div>
+            </div>
+        </div>
+        <div class="modal fade" id="startmodal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+              <div class="modal-content">
+                <div class="modal-header">
+                  <h5 class="modal-title ml-2 mt-2" id="exampleModalLabel">Start the task - {{currentTask.taskName}}</h5>
+                  <span aria-hidden="true" v-on:click="closeStartModal()" class="mr-2" style="font-size:2rem;font-weight:500;cursor:pointer;">&times;</span>
+                </div>
+                <div class="modal-footer">
+                  <button type="button" class="btn btn-secondary" v-on:click="closeStartModal()">Close</button>
+                  <button type="button" class="btn btn-primary" v-on:click="startTask()">Start task</button>
+                </div>
+              </div>
+            </div>
+        </div>
+        <div class="modal fade" id="reviewmodal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+              <div class="modal-content">
+                <div class="modal-header">
+                  <h5 class="modal-title ml-2 mt-2" id="exampleModalLabel">Send this task for review - {{currentTask.taskName}}</h5>
+                  <span aria-hidden="true" v-on:click="closeReviewModal()" class="mr-2" style="font-size:2rem;font-weight:500;cursor:pointer;">&times;</span>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-warning alert-dismissible fade show" role="alert" id="reviewalert" style="display: none;">
+                        <span id="reviewalerttext"></span>
+                        <button type="button" class="close" aria-label="Close" v-on:click="closeAlert('review')">
+                          <span aria-hidden="true" >&times;</span>
+                        </button>
+                    </div>
+                    <div class="custom-file mb-2">
+                        <input type="file" class="custom-file-input" id="customFile" accept="image/*" v-on:change="setImage()">
+                        <label class="custom-file-label" for="customFile" id="filelabel">Upload screenshot of the work done</label>
+                    </div>
+                    <div class="row d-flex justify-content-center mb-2 over" v-if="reviewImage !== null" style="position: relative;">
+                        <div class="row d-flex justify-content-end" style="width: 100% !important;">
+                        </div>
+                        <div class="row d-flex justify-content-center" id="item">
+                            <div class="col-11 cont">
+                                <i class="fa fa-times icon" aria-hidden="true" style="font-size:2rem;font-weight:100;cursor:pointer;" v-on:click="cancel()"></i>
+                                <img src="" alt="" class="img-fluid image rounded border border-dark" id="preview">
+                            </div>
+                        </div>
+                    </div>
+                    <textarea name="" id="comment" cols="30" rows="3" class="form-control" placeholder="Comments" v-model="currentTask.assigned.reviewComment"></textarea>
+                </div>
+                <div class="modal-footer">
+                  <button type="button" class="btn btn-secondary" v-on:click="closeReviewModal()">Close</button>
+                  <button type="button" class="btn btn-warning" v-on:click="reviewTask()">Send for review</button>
+                </div>
+              </div>
+            </div>
+        </div>
+        <div class="modal fade" id="notificationmodal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-scrollable modal-dialog-centered modal-lg">
+              <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title ml-2 mt-2" id="exampleModalLabel">Notifications</h5>
+                    <span aria-hidden="true" v-on:click="closeNotificationModal()" class="mr-2" style="font-size:2rem;font-weight:500;cursor:pointer;">&times;</span>
+                </div>
+                <div class="modal-body" style="padding: 0px;overflow-x:hidden;">
+                    <div class="card my-1" v-for="notification of notifications.tab">
+                        <div class="card-body">
+                          <div class="row justify-content-between"><span class="col-4 h5">{{notification.title}}</span><span class="col-4 text-muted h6 text-right">{{notification.creationDate}}</span></div>
+                           {{notification.description}} by {{workerMap[notification.from]}}
+                           <br>
+                           <div class="row justify-content-end">
+                               <a href="#">View task</a>
+                           </div>
+                        </div>
+                    </div>
+                    <div class="row justify-content-center mb-2" v-if="notifications.tab.length == 0" style="overflow-x: hidden;">
+                        <span class="h3">No notifications to show</span>
+                    </div>
+                </div>
+              </div>
+            </div>
+        </div>
+        <div class="modal fade" id="passwordmodal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+            <div class="modal-dialog" role="document">
+              <div class="modal-content">
+                <div class="modal-header">
+                  <h5 class="modal-title ml-2 mt-2" id="exampleModalLabel">Change Password</h5>
+                  <span aria-hidden="true" data-dismiss="modal" class="mr-2" style="font-size:2rem;font-weight:500;cursor:pointer;">&times;</span>
+                </div>
+                <div class="modal-body">
+                    <form action="">
+                        <div class="alert alert-warning alert-dismissible fade show" role="alert" id="passwordalert" style="display: none;">
+                            <span id="passwordalerttext"></span>
+                            <button type="button" class="close" aria-label="Close" v-on:click="closeAlert('password')">
+                              <span aria-hidden="true" >&times;</span>
+                            </button>
+                        </div>
+                        <div class="form-group">
+                            <label for="currentpwd">Current Password</label>
+                            <div class="input-group mb-3">
+                                <input type="password" class="form-control" placeholder="Enter current password" id="currentpasswordinput" aria-label="Enter current password" aria-describedby="button-addon2" v-model="changePassword.current">
+                                <div class="input-group-append">
+                                  <button class="btn btn-outline-secondary" type="button" id="current" v-on:click="show($event.target.id)">Show</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="currentpwd">New Password</label>
+                            <div class="input-group mb-3">
+                                <input type="password" class="form-control" placeholder="Enter new password" id="newpasswordinput" aria-label="Enter new password" aria-describedby="button-addon2" v-model="changePassword.new">
+                                <div class="input-group-append">
+                                  <button class="btn btn-outline-secondary" type="button" id="new"  v-on:click="show($event.target.id)">Show</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="currentpwdre">Re-enter new Password</label>
+                            <div class="input-group mb-3">
+                                <input type="password" class="form-control" placeholder="Re-enter new password" id="renewpasswordinput" aria-label="Re-enter new password" aria-describedby="button-addon2" v-model="changePassword.newRepeat">
+                                <span aria-hidden="true" data-dismiss="modal" class="mr-2" style="font-size:2rem;font-weight:500;cursor:pointer;">&times;</span>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                  <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                  <button type="button" class="btn btn-primary" v-on:click="updatePassword()">Update Password</button>
+                </div>
+              </div>
+            </div>
+        </div>
+        <div class="modal fade" id="viewmodal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-lg" role="document">
+              <div class="modal-content">
+                <div class="modal-header">
+                  <h5  class="modal-title ml-2 mt-2" id="exampleModalLabel">View task </h5>
+                    <span aria-hidden="true" v-on:click="closeViewModal()" class="mr-2" style="font-size:2rem;font-weight:500;cursor:pointer;">&times;</span>
+                </div>
+                <div class="modal-body">
+                    <div class="row d-flex justify-content-start">
+                        <div class="col-4" style="padding-right: 0px;padding-left:10px;">
+                            <div class="form-group">
+                                <label for="name">Task Name</label>
+                                <textarea class="form-control" id="name" rows="1" disabled v-model="currentTask.taskName"></textarea>
+                            </div>
+                        </div>
+                        <div class="col-4" style="padding-right: 0px;padding-left:10px;">
+                            <div class="form-group">
+                                <label for="desc">Task Description</label>
+                                <textarea class="form-control" id="desc" rows="1" disabled v-model="currentTask.taskDescription"></textarea>
+                            </div>
+                        </div>
+                        <div class="col-2" style="padding-right: 0px;padding-left:10px;">
+                            <div class="form-group">
+                                <label for="tat">Turnaround Time</label>
+                                <input type="text" class="form-control" disabled id="tat" v-model="currentTask.tat">
+                            </div>
+                        </div>
+                        <div class="col-2" style="padding-right: 10px;padding-left:10px;">
+                            <div class="form-group">
+                                <label for="status">Current Status</label>
+                                <input type="text" class="form-control" disabled id="status" :value="toTitleCase(currentTask.assigned.status)">
+                            </div>
+                        </div>
+                    </div>
+                    <!--div class="row d-flex justify-content-end ml-1" style="margin-right: 1px;">
+                        <div class="col-auto" style="padding-right: 0px;" style="width:98% !important">
+                            <a href="#" class="small link" v-on:click="showDetailedHistory()" v-if="viewModalConfig.brief">View Complete History</a>
+                            <a href="#" class="small link" v-on:click="showBriefHistory()" v-if="viewModalConfig.detailed">View Brief History</a>
+                        </div>
+                    </div-->
+                    <div class="row d-flex justify-content-center" v-if="viewModalConfig.detailed">
+                        <div class="col-auto">
+                            <span class="display-4" style="font-size: 3rem;" v-if="viewModalConfig.loading">Please wait while we fetch the data</span>
+                        </div>
+                        <b-table class="table-bordered lesspad" style="width:98% !important" v-if="viewModalConfig.detailed && !viewModalConfig.loading" :fields="this.viewModalConfig.fields" :items="this.viewModalConfig.history">
+                            <template #cell(title)="data">
+                                {{data.item.title}}
+                            </template>
+                            <template #cell(creationDate)="data">
+                                {{moment(new Date(data.item.creationDate)).format('MMMM Do YYYY')}}
+                            </template>
+                            <template #cell(from)="data">
+                                {{userMap[data.item.from]}}
+                            </template>
+                        </b-table>
+                    </div>
+                    <div class="row d-flex justify-content-center">
+                        <table class="table-bordered" style="width:98% !important">
+                            <thead>
+                                <tr class="text-center bg-dark text-light">
+                                    <th colspan="4">Brief Task History</th>
+                                </tr>
+                            </thead>
+                            <thead class="thead-dark">
+                                <tr>
+                                    <th scope="col">Status</th>
+                                    <th scope="col">Date</th>
+                                    <th scope="col">Comments provided</th>
+                                    <th scope="col">User</th>
+                                </tr>
+                            </thead>
+                            <tr v-if="currentTask.creationDate !== undefined && currentTask.creationDate !== null">
+                                <td>Created</td>
+                                <td>{{moment(new Date(currentTask.creationDate)).format('MMMM Do YYYY')}}</td>
+                                <td>NA</td>
+                                <td>{{workerMap[currentTask.createdBy]}}</td>
+                            </tr>
+                            <tr v-if="currentTask.assigned.assignmentDate !== undefined && currentTask.assigned.assignmentDate !== null">
+                                <td>Assigned to</td>
+                                <td>{{moment(new Date(currentTask.assigned.assignmentDate)).format('MMMM Do YYYY')}}</td>
+                                <td>NA</td>
+                                <td>{{user.username}}</td>
+                            </tr>
+                            <tr v-if="currentTask.lastEditDate !== undefined && currentTask.lastEditDate !== null">
+                                <td>Edited by</td>
+                                <td>{{moment(new Date(currentTask.lastEditDate)).format('MMMM Do YYYY')}}</td>
+                                <td>NA</td>
+                                <td>{{workerMap[currentTask.lastEditedBy]}}</td>
+                            </tr>
+                            <tr v-if="currentTask.assigned.startDate !== undefined && currentTask.assigned.startDate !== null">
+                                <td>Started</td>
+                                <td>{{moment(new Date(currentTask.assigned.startDate)).format('MMMM Do YYYY')}}</td>
+                                <td>NA</td>
+                                <td>{{user.username}}</td>
+                            </tr>
+                            <tr v-if="currentTask.assigned.reviewDate !== undefined && currentTask.assigned.reviewDate !== null">
+                                <td>Sent for review</td>
+                                <td>{{moment(new Date(currentTask.assigned.reviewDate)).format('MMMM Do YYYY')}}</td>
+                                <td>{{currentTask.assigned.reviewComment}}&nbsp;&nbsp;<a :href="currentTask.assigned.reviewImageUrl" target="_blank" class="small" v-if="currentTask.assigned.reviewImageUrl !== undefined">(Image Attached)</a></td>
+                                <td>{{user.username}}</td>
+                            </tr>
+                            <tr v-if="currentTask.assigned.revisionDate !== undefined && currentTask.assigned.revisionDate !== null">
+                                <td>Re-opened</td>
+                                <td>{{moment(new Date(currentTask.assigned.revisionDate)).format('MMMM Do YYYY')}}</td>
+                                <td>{{currentTask.assigned.revisionComment}}</td>
+                                <td>{{workerMap[currentTask.createdBy]}}</td>
+                            </tr>
+                            <tr v-if="currentTask.assigned.completeDate !== undefined && currentTask.assigned.completeDate !== null">
+                                <td>Completed</td>
+                                <td>{{moment(new Date(currentTask.assigned.completeDate)).format('MMMM Do YYYY')}}</td>
+                                <td>{{currentTask.assigned.completeComment}}</td>
+                                <td>{{workerMap[currentTask.createdBy]}}</td>
+                            </tr>
+                            <tr v-if="parseFloat(currentTask.deadline) < 0" class="text-danger">
+                                <td>Past Deadline</td>
+                                <td>{{moment(new Date(currentTask.creationDate)).add(currentTask.storyPoints,'days').format('MMMM Do YYYY')}}</td>
+                                <td>NA</td>
+                                <td>{{user.username}}</td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+              </div>
+            </div>
+        </div>
+        <div class="modal fade" id="updatemodal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+              <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title ml-2 mt-2" id="exampleModalLabel">Update Profile</h5>
+                    <span aria-hidden="true" data-dismiss="modal" class="mr-2" style="font-size:2rem;font-weight:500;cursor:pointer;">&times;</span>
+                </div>
+                <div class="modal-body">
+                  <form action="/">
+                    <div class="alert alert-warning alert-dismissible fade show" role="alert" id="updatealert" style="display: none;">
+                        <span id="updatealerttext"></span>
+                        <button type="button" class="close" aria-label="Close" v-on:click="closeAlert('update')">
+                          <span aria-hidden="true" >&times;</span>
+                        </button>
+                    </div>
+                    <div class="row">
+                        <div class="col-4 form-group">
+                            <label for="empid">Employee ID</label>
+                            <input type="text" class="form-control" id="empid" aria-describedby="emailHelp" placeholder="Enter your employee ID" v-model="updatedUser.empID">
+                        </div>
+                        <div class="col-4 form-group">
+                            <label for="wwid">WWID</label>
+                            <input type="text" class="form-control" id="wwid" aria-describedby="emailHelp" placeholder="Enter your WWID" v-model="updatedUser.wwID">
+                        </div>
+                        <div class="col-4 form-group">
+                            <label for="fullname">Full Name</label>
+                            <input type="text" class="form-control" id="fullname" aria-describedby="emailHelp" placeholder="Enter your full name" v-model="updatedUser.fullName">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-6 form-group">
+                            <label for="username">Username(JnJ Email)</label>
+                            <input type="email" class="form-control" id="username" aria-describedby="emailHelp" placeholder="Enter your username(JnJ Email)" disabled v-model="updatedUser.username">
+                        </div>
+                        <div class="col-6 form-group">
+                            <label for="tcs_email">TCS Email</label>
+                            <input type="email" class="form-control" id="tcs_email" aria-describedby="emailHelp" placeholder="Enter your TCS Email" v-model="updatedUser.tcs_email">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-4 form-group">
+                            <label for="domain">Domain</label>
+                            <input type="text" class="form-control" id="domain" aria-describedby="emailHelp" placeholder="Enter your Domain" v-model="updatedUser.domain">
+                        </div>
+                        <div class=" col-4 form-group">
+                            <label for="tower">Tower</label>
+                            <input type="email" class="form-control" id="tower" aria-describedby="emailHelp" placeholder="Enter your Tower" v-model="updatedUser.tower">
+                        </div>
+                        <div class="col-4 form-group">
+                            <label for="position">Position</label>
+                            <input type="email" class="form-control" id="position" aria-describedby="emailHelp" placeholder="Enter your Position" v-model="updatedUser.role">
+                        </div>
+                    </div>
+                  </form>
+                </div>
+                <div class="modal-footer">
+                  <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+                  <button type="button" class="btn btn-primary" v-on:click="updateUser()">Save changes</button>
+                </div>
+              </div>
+            </div>
+        </div>
+        <div class="modal fade" id="advancedfiltermodal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-lg" role="document">
+              <div class="modal-content">
+                <div class="modal-header">
+                  <h5 class="modal-title ml-2 mt-2" id="exampleModalLabel">Advanced Filters</h5>
+                  <span aria-hidden="true" v-on:click="closeAdvancedFilters()" class="mr-2" style="font-size:2rem;font-weight:500;cursor:pointer;">&times;</span>
+                </div>
+                <div class="modal-body">
+                  <div class="row d-flex justify-content-center form">
+                        <div class="col-auto">
+                            <select name="typeOfDate" id="type" class="form-control" v-model="taskFilter.date.type">
+                                <option value="" disabled selected>Choose date type</option>
+                                <option value="creationDate">Creation Date</option>
+                                <option value="lastEditDate">Last Edit Date</option>
+                                <option value="assignmentDate">Assignment Date</option>
+                                <option value="startDate">Start Date</option>
+                                <option value="reviewDate">Review Date</option>
+                                <option value="revisionDate">Re-open Date</option>
+                                <option value="completeDate">Completion Date</option>
+                            </select>
+                        </div>
+                        <div class="col-5">
+                            <div class="input-group mb-3" id="reportrange">
+                                <div class="input-group-prepend">
+                                  <span class="input-group-text"><i class="fa fa-calendar"></i></span>
+                                </div>
+                                <input type="text" class="form-control" placeholder="Select date range" id="rangevalue" disabled>
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                          <button class="btn btn-dark" v-on:click="filterTasks()">Filter Tasks</button>
+                          <button class="btn btn-dark" v-on:click="resetDate()">Reset</button>
+                        </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+        </div>
+        <div class="modal fade" id="infomodal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLongTitle" aria-hidden="true">
+            <div class="modal-dialog modal-lg" role="document">
+              <div class="modal-content">
+                <div class="modal-header">
+                  <h5 class="modal-title ml-2 mt-2" id="exampleModalLongTitle">Legend</h5>
+                  <span aria-hidden="true" v-on:click="closeInfoModal()" class="mr-2" style="font-size:2rem;font-weight:500;cursor:pointer;">&times;</span>
+                </div>
+                <div class="modal-body row d-flex justify-content-center">
+                  <table class="table table-bordered lesspad" style="width: 99%;">
+                      <thead>
+                          <th class="bg-dark text-white">Color Code</th>
+                          <th class="bg-dark text-white">Explanation</th>
+                          <th class="bg-dark text-white">Performed By</th>
+                      </thead>
+                      <tr>
+                        <td class="bg-light"></td>
+                        <td>The task has been created but not assigned</td>
+                        <td>Manager</td>
+                    </tr>
+                      <tr>
+                          <td class="bg-secondary"></td>
+                          <td>The task has been assigned but not started</td>
+                          <td>Manager</td>
+                      </tr>
+                      <tr>
+                        <td class="bg-primary"></td>
+                        <td>The task has been started but not reviewed</td>
+                        <td>Worker</td>
+                    </tr>
+                    <tr>
+                        <td class="bg-warning"></td>
+                        <td>The task has been sent for review</td>
+                        <td>Worker</td>
+                    </tr>
+                    <tr>
+                        <td class="bg-success"></td>
+                        <td>The task has been completed</td>
+                        <td>Start</td>
+                    </tr>
+                    <tr>
+                        <td class="bg-error"></td>
+                        <td>The task has not been completed within deadline</td>
+                        <td>NA</td>
+                    </tr>
+                    <tr>
+                        <td class="border-danger" style="border-width: 2px;"></td>
+                        <td>The red border on a task card means the task is nearing deadline</td>
+                        <td>NA</td>
+                    </tr>
+                  </table>
+                </div>
+              </div>
+            </div>
+        </div>
+        <div class="row justify-content-around">
+            <div class="col-3">
+                <div class="row ml-1 mt-2 mb-1">
+                    <div class="card" style="width: 19rem;">
+                        <div class="card-body" style="padding: 0.5rem;">
+                          <h5 class="card-title" style="margin-bottom: .25rem;">Profile</h5>
+                          <p class="card-text" style="margin-bottom: .35rem;">
+                              Employee ID : {{user.empID}} <br>
+                              WWID : {{user.wwID}} <br>
+                              Name : {{user.fullName}} <br>
+                              TCS Email : {{user.tcs_email}} <br>
+                              JnJ Email : {{user.username}} <br>
+                              Domain : {{user.domain}} || Tower : {{user.tower}} <br>
+                              Role : {{user.role}} || Type : {{user.userType === "admin" ? "Manager" : "Associate"}}
+                          </p>
+                          <div class="row justify-content-around">
+                              <button class="btn btn-primary" v-on:click="openUpdateModal()">Update Profile</button>
+                              <button class="btn btn-primary" v-on:click="openChangePasswordModal()">Change Password</button>
+                          </div>
+                        </div>
+                      </div>
+                </div>
+                <div class="row ml-1">
+                    <div class="card" style="width: 19rem;">
+                        <div class="card-body"  style="padding: 0.5rem;">
+                          <h5 class="card-title">Task Summary</h5>
+                          <h6 class="card-subtitle mb-2 text-muted">Count of tasks assigned to you</h6>
+                          <p class="card-text">
+                                <strong>Tasks Assigned : {{taskSummary.assigned}}</strong> <br>
+                                Tasks assigned but not started : {{taskSummary.assignedNotStarted}} <br>
+                                Tasks started but not in review : {{taskSummary.startedNotReview}} <br>
+                                <strong>Tasks in review but not completed : {{taskSummary.reviewedNotCompleted}}</strong> <br>
+                                <strong>Tasks completed : {{taskSummary.completed}}</strong> <br>
+                                <strong class="text-danger">Tasks past deadline : {{taskSummary.pastDeadline}}</strong>
+                          </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-9">
+                <div class="row justify-content-between" style="max-height: 55px;">
+                    <div class="col-auto mt-1" style="padding-left: 0px;">
+                        <h2>Tasks</h2>
+                    </div>
+                    <div class="col-auto row d-flex justify-content-end">
+                        <div class="col-auto mt-1" style="padding-left: 0.1rem;" v-if="filteredTasks.length > 0">
+                            <vue-paginate :page-count="noOfPages"  :click-handler="clickCallback" container-class="pagination" page-class="page-item" page-link-class="page-link" prev-class="page-item" prev-link-class="page-link" next-class="page-item" next-link-class="page-link" :prev-text="taskPage.previousText" :next-text="taskPage.nextText" :first-last-button="taskPage.firstLast"></vue-paginate>
+                        </div>
+                        <div class="col-auto">
+                            <i class="fa fa-file-excel-o mt-1 mr-4 excel" aria-hidden="true" style="font-size: 2.4rem;font-weight:bold;"data-toggle="tooltip" data-placement="left" title="Export to Excel" v-on:click="exportTasksToExcel()"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="row justify-content-start mb-2">
+                    <div class="col-4" style="padding-left:0px;">
+                        <input type="text" class="form-control" id="taskname" placeholder="Search by Task Name" v-model="taskFilter.name">
+                    </div>
+                    <div class="col-3">
+                        <select name="" id="taskassigned" class="form-control" v-model="taskFilter.createdBy">
+                            <option value="" selected disabled>Choose Creator</option>
+                            <option value="">All</option>
+                            <option :value="worker.id" v-for="worker in workers">{{worker.name}}</option>
+                        </select>
+                    </div>
+                    <div class="col-2">
+                        <select name="" id="status" class="form-control" v-model="taskFilter.status">
+                            <option value="" selected disabled>Select Status</option>
+                            <option value="">All</option>
+                            <option value="assigned">Assigned</option>
+                            <option value="started">Started</option>
+                            <option value="review">Review</option>
+                            <option value="completed">Completed</option>
+                        </select>
+                    </div>
+                    <div class="col-3 row">
+                        <div class="col-4">
+                            <button class="btn btn-dark" v-on:click="filterTasks()">Filter</button>
+                        </div>
+                        <div class="col-4">
+                            <button class="btn btn-dark" v-on:click="reset()">Reset</button>
+                        </div>
+                        <div class="col-4">
+                            <button class="btn btn-dark" v-on:click="openSortModal()">Sort</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="row d-flex justify-content-end">
+                    <div class="d-flex justify-content-end col-2 mr-4">
+                     <a href="#" class="small" v-on:click="openAdvancedFilters()">Advanced filters</a>
+                    </div>
+                </div>
+                <div class="row justify-content-start" v-if="filteredTasks.length > 0">
+                    <div class="col-4 my-1" style="padding-left: 0px;" v-for="(task,index) of displayedTasks">
+                        <div class="card" style="width: 97%;" v-bind:class="{'border-danger' : task.isUrgent,'bg-light' : task.assigned.status === 'created','bg-secondary' : task.assigned.status === 'assigned','bg-primary' : task.assigned.status === 'started','bg-warning' : task.assigned.status === 'review', 'bg-success' : task.assigned.status === 'completed','bg-error' : parseFloat(task.deadline) < 0,}" >
+                            <div class="card-body" style="padding: 0.5rem;">
+                                <h5 class="card-title d-flex justify-content-between"><span class="col-auto p-0">{{task.taskName}}</span><span class="col-1 p-0" style="cursor: pointer;" ><i class="fa fa-eye" v-on:click="viewTask(index)" data-toggle="tooltip" data-placement="left" title="View task"></i></span></h5>
+                                <h6 class="card-subtitle mb-2 text-muted">Status : {{task.assigned.status}}<span v-if="task.assigned.status !== 'completed' && parseFloat(task.deadline) > 0"> ||  Deadline : {{Math.round(parseFloat(task.deadline))}} {{Math.round(parseFloat(task.deadline)) > 1?"days" : "day" }}</span><br>Created By : {{task.createdBy === "NA" ? "NA" : workerMap[task.createdBy]}}</h6>
+                                <p class="card-text small">
+                                    {{task.taskDescription}}
+                                </p>
+                                <a href="#" class="card-link font-weight-bold text-primary" v-on:click="openStartModal(index)" :disabled="parseFloat(task.deadline) < 0">Start Task</a>
+                                <a href="#" class="card-link font-weight-bold text-info" v-on:click="openReviewModal(index)" :disabled="parseFloat(task.deadline) < 0">Send for review</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="row justify-content-center" v-if="filteredTasks.length == 0" style="width:100%">
+                    <span class="h2 text-center my-2">No tasks to show</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="assets/js/json2csv@4.2.js"></script>
+    <script src="assets/js/moment.min.js"></script>
+    <script src="assets/js/socket.io.min.js"></script>
+    <script src="assets/js/md5.js"></script>
+    <script src="assets/js/vue@2.js"></script>
+    <script src="assets/js/vuejspaginate.js"></script>
+    <script src="assets/js/moment.min.js"></script>
+    <script src="assets/js/jquery-3.6.0.js"></script>
+    <script src="assets/js/popper.min.js"></script>
+    <script src="assets/js/bootstrap.bundle.js"></script>
+    <script src="assets/js/bootstrap-select.min.js"></script>
+    <script src="assets/js/daterangepicker.js"></script>
+    <script src="assets/js/bootstrap-vue.min.js"></script>
+    <script>
+        Vue.component('vue-paginate', VuejsPaginate)
+        var socket = io('http://localhost:3001')
+        $(document).ready(function() {
+            $("body").tooltip({ selector: '[data-toggle=tooltip]' });
+        });
+        var app = new Vue({
+            el : "#app",
+            data : ()=>{
+                return {
+                    token : "",
+                    loading : false,
+                    user : {},
+                    apiUrl : "http://localhost:3000/api",
+                    unsecureApiUrl : "http://localhost:3000",
+                    updatedUser : {},
+                    changePassword : {
+                        current : "",
+                        new : "",
+                        newRepeat : ""
+                    },
+                    taskPage : {
+                        currentPage : 1,
+                        itemsPerPage : 9,
+                        pageOptions : [6,10,15,20],
+                        pageRange : 2,
+                        nextText : "Next",
+                        previousText : "Previous",
+                        firstLast : true,
+                        firstText : "First",
+                        lastText : "Last"
+                    },
+                    taskSummary :{
+                        assigned : 0,
+                        started : 0,
+                        inReview : 0,
+                        completed : 0,
+                        assignedNotStarted : 0,
+                        startedNotReview : 0,
+                        reviewedNotCompleted : 0,
+                        pastDeadline : 0,
+                    },
+                    viewModalConfig : {
+                        "brief" : true,
+                        "detailed" : false,
+                        "loading" : true,
+                        "fields" : [
+                            { key: 'title', label: 'Action', thClass : "bg-dark text-light"},
+                            { key: 'from', label: 'Done By', thClass : "bg-dark text-light"},
+                            { key: 'creationDate', label: 'Date', thClass : "bg-dark text-light"},
+                        ],
+                        "history" : [],
+                        "perPage": 5,
+                        "currentPage" : 1,
+                    },
+                    currentTask : {
+                        taskName : "",
+                        taskDescription : "",
+                        createdBy : "",
+                        assigned : {
+                            "worker_id" : "",
+                            "status" : "",
+                            "reviewComment" : "",
+                        }
+                    },
+                    taskFilter : {
+                        name : "",
+                        createdBy : "",
+                        status : "",
+                        date : {
+                            type : "creationDate",
+                            range : {
+                                start : "",
+                                end : ""
+                            },//moment().format('MMMM D, YYYY') + ' - ' + moment().add(1).format('MMMM D, YYYY'),
+                        },
+                        sort : {
+                            column : "",
+                            mode : "",
+                        }
+                    },
+                    notifications : {
+                        currentNotificationCount : 0,
+                        newNotification : false,
+                        dropdown : [],
+                        countInDropdown : 3,
+                        tab : [],
+                        lastNotificationEntry : "all",
+                        notOk : false,
+                    },
+                    filteredTasks : [],
+                    tasks : [],
+                    workerMap : {},
+                    userMap : {},
+                    workers : [],
+                    reviewImage : null
+                }
+            },
+            created : async function(){
+                try{
+                    this.loading = true
+                    var role = localStorage.getItem("role")
+                    var loggedIn = localStorage.getItem("loggedIn")
+                    if(loggedIn && role !== "worker"){
+                        localStorage.clear()
+                        window.location.href="/"
+                        return
+                    }
+                    await Promise.all([this.getProfile(),this.getWorkers(),this.getTasks(),this.getNotifications(),])
+                    this.filterTasks()
+                    //console.log(this.tasks)
+                    socket.on('connect',(()=>{
+                        console.log('Connected to server')
+                        this.userCount+=1
+                        //console.log(socket.id)
+                    }).bind(this))
+                    socket.on('broadcast',async (data)=>{
+                            //console.log('received')
+                        if(data["role"] === "worker" || data["role"] === 'all'){
+                            this.notifications.newNotification = true
+                            this.notifications.currentNotificationCount +=1
+                            await Promise.all([this.getNotifications(),this.getTasks()])
+                            this.filterTasks()
+                            //console.log(this.tasks)
+                            this.$forceUpdate()
+                        }
+                    })
+                    $('#reportrange').daterangepicker({
+                        ranges: {
+                           'Today': [moment(), moment()],
+                           'Yesterday': [moment().subtract(1, 'days'), moment().subtract(1, 'days')],
+                           'Last 7 Days': [moment().subtract(6, 'days'), moment()],
+                           'Last 30 Days': [moment().subtract(29, 'days'), moment()],
+                           'This Month': [moment().startOf('month'), moment().endOf('month')],
+                           'Last Month': [moment().subtract(1, 'month').startOf('month'), moment().subtract(1, 'month').endOf('month')]
+                        }
+                        },(function(start,end,label){
+                        //console.log(start,end,label)
+                        this.taskFilter.date.range.start = start
+                        this.taskFilter.date.range.end = end
+                        //console.log(`${start.format("MMMM Do YYYY")} - ${end.format("MMMM Do YYYY")}`)
+                        $('#rangevalue').val(`${start.format("MMMM Do YYYY")} - ${end.format("MMMM Do YYYY")}`)
+                    }).bind(this));
+                    this.loading = false
+                }
+                catch(err){
+                    localStorage.clear()
+                    alert(err)
+                    this.loading = false
+                    console.log(err)
+                    window.location.href="/"
+                    localStorage.clear()
+                    
+                }
+            },
+            computed : {
+                displayedTasks : function(){
+                    const startIndex = this.taskPage.itemsPerPage * (this.taskPage.currentPage - 1);
+                    const endIndex = startIndex + this.taskPage.itemsPerPage
+                    return this.filteredTasks.slice(startIndex,endIndex)
+                },
+                noOfPages : function(){
+                    return Math.ceil(this.filteredTasks.length / this.taskPage.itemsPerPage);
+                },
+                tasksRows : function(){
+                    return this.filteredTasks.length
+                },
+                historyRows : function(){
+                    return this.viewModalConfig.history.length
+                }
+            },
+            methods :{
+                clickCallback(page){
+                    this.taskPage.currentPage = page
+                },
+                generateRequestBody(details){
+                    var formBody = [];
+                    for (var property in details) {
+                    var encodedKey = encodeURIComponent(property);
+                    var encodedValue = encodeURIComponent(details[property]);
+                    formBody.push(encodedKey + "=" + encodedValue);
+                    }
+                    formBody = formBody.join("&");
+                    return formBody
+                },
+                show(id){
+                    const button = document.getElementById(id)
+                    const input = document.getElementById(`${id}passwordinput`)
+                    if(button.innerText === "Show"){
+                        button.innerText = "Hide"
+                        input.type = "text"
+                    }
+                    else if(button.innerText === "Hide"){
+                        button.innerText = "Show"
+                        input.type = "password"
+                    }
+                    else{
+                        alert("Some kind of error has occured")
+                        return
+                    }
+                },
+                toTitleCase(str = "") {
+                    return str.replace(
+                      /\w\S*/g,
+                      function(txt) {
+                        return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();
+                      }
+                    );
+                },
+                dateDiff(date2,date1){
+                    const diffTime = Math.abs(new Date(date2) - new Date(date1));
+                    //console.log(date2,date1,diffTime)
+                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+                    //console.log(diffTime + " milliseconds");
+                    return diffDays;
+                },
+                reset(){
+                    this.filteredTasks = this.tasks
+                    this.taskFilter = JSON.parse(JSON.stringify({"name" : "","assignedTo" : "","status" : "","sort" : {"column" : "", "mode" : ""},"date" : {"type" : "creationDate","range" : {"start" : "","end" : ""}}}))
+                },
+                openUpdateModal(){
+                    this.updatedUser = JSON.parse(JSON.stringify(this.user))
+                    $("#updatemodal").modal('show')
+                },
+                closeUpdateModal(){
+                    $("#updatemodal").modal('hide')
+                },
+                openChangePasswordModal(){
+                    this.changePassword = JSON.parse(JSON.stringify({current : "",new : "",newRepeat : ""}))
+                    $('#passwordmodal').modal('show')
+                },
+                closeChangePasswordModal(){
+                    $('#passwordmodal').modal('hide')
+                },
+                openSortModal(){
+                    //this.taskFilter.sortColumn = ""
+                    $('#sortmodal').modal('show')
+                },
+                closeSortModal(){
+                    this.taskFilter.sort.column = ""
+                    this.taskFilter.sort.mode = ""
+                    $('#sortmodal').modal('hide')
+                },
+                openInfoModal(){
+                    $("#infomodal").modal('show')
+                },
+                closeInfoModal(){
+                    $("#infomodal").modal('hide')
+                },
+                openStartModal(index){
+                    this.currentTask = JSON.parse(JSON.stringify(this.filteredTasks[index]))
+                    //console.log(this.currentTask)
+                    if(this.currentTask.assigned.status !== 'assigned'){
+                        alert('This task cannot be started')
+                        return
+                    }
+                    $('#startmodal').modal('show')
+                },
+                closeStartModal(){
+                    //this.taskFilter.sortColumn = ""
+                    $('#startmodal').modal('hide')
+                },
+                openReviewModal(index){
+                    this.currentTask = JSON.parse(JSON.stringify(this.filteredTasks[index]))
+                    if(this.currentTask.assigned.status !== 'started'){
+                        alert('This task cannot be sent for review')
+                        return
+                    }
+                    $('#reviewmodal').modal('show')
+                },
+                closeReviewModal(){
+                    this.closeAlert('review')
+                    $('#reviewmodal').modal('hide')
+                },
+                validateEmail(email) {
+                    const re = /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
+                    return re.test(String(email).toLowerCase());
+                },
+                closeAlert(name){
+                    const item = document.getElementById(`${name}alert`)
+                    item.style.display = "none"
+                },
+                openNotificationsModal(){
+                    $('#notificationmodal').modal('show')
+                },
+                closeNotificationModal(){
+                    $('#notificationmodal').modal('hide')
+                },
+                viewFromNotification(id){
+                    var idx = this.tasks.map(e => {return e._id}).indexOf(id)
+                    this.viewTask(idx)
+                },
+                openAdvancedFilters(){
+                    $('#advancedfiltermodal').modal('show')
+                },
+                closeAdvancedFilters(){
+                    $('#advancedfiltermodal').modal('hide')
+                },
+                openInfoModal(){
+                    $("#infomodal").modal('show')
+                },
+                closeInfoModal(){
+                    $("#infomodal").modal('hide')
+                },
+                cancel(){
+                    this.reviewImage = null;
+                    const label = document.getElementById('filelabel')
+                    label.innerText = "Upload screenshot of the work done"
+                },
+                filterTasks(){
+                    this.filteredTasks = []
+                    var temp = 
+                    this.tasks.forEach(e => {
+                        if(this.taskFilter.name != "" && e.taskName.toLowerCase().includes(this.taskFilter.name.toLowerCase()) == false){
+
+                        }
+                        else if(this.taskFilter.status !== "" && e.assigned.status !== this.taskFilter.status){
+
+                        }
+                        else if(this.taskFilter.createdBy !== "" && this.taskFilter.createdBy !== e.createdBy){
+                            
+                        }
+                        else{
+                            this.filteredTasks.push(e)
+                        }
+                    })
+                    //console.log(this.filteredTasks)
+                    var temp = this.filteredTasks
+                    var type = this.taskFilter.date.type
+                    var start = this.taskFilter.date.range.start === ""? new Date(0): this.taskFilter.date.range.start
+                    var end = this.taskFilter.date.range.end === ""? new Date(): this.taskFilter.date.range.end
+                    //console.log(start,end)
+                    if(type === "creationDate" || type === "lastEditDate")
+                    {
+                        temp.map(e => {
+                            e[type] = e[type] === undefined ? null : new Date(e[type])
+                        })
+                    }
+                    else{
+                        temp.map(e => {
+                            e[type] = e.assigned[type] === undefined ? null : new Date(e.assigned[type])
+                        })
+                    }
+                    var filterTemp = temp.filter(e => {
+                        //console.log(e[type] >= start && e[type] <= end)
+                        return e[type] >= start && e[type] <= end
+                    })
+                    //console.log(filterTemp)
+                    this.filteredTasks = filterTemp
+                    //console.log(this.filteredTasks)
+                },
+                sortTask(){
+                    try{
+                        const col = this.taskFilter.sort.column
+                        const mode = this.taskFilter.sort.mode
+                        //console.log(col,mode)
+                        //console.log(this.filteredTasks)
+                        var temp = this.filteredTasks
+                        if(col === "creationDate" || col === "lastEditDate")
+                        {
+                            temp.map(e => {
+                                e[col] = e[col] === undefined ? null : new Date(e[col])
+                            })
+                        }
+                        else{
+                            temp.map(e => {
+                                e[col] = e.assigned[col] === undefined ? null : new Date(e.assigned[col])
+                            })
+                        }
+                        
+                        if(mode == 'asc'){
+                            //console.log('ascending')
+                            temp.sort((a,b)=> a[col] - b[col])
+                        }
+                        else if(mode == 'desc'){
+                            //console.log('descending')
+                            temp.sort((a,b)=> b[col] - a[col])
+                        }
+                        //for()
+                    }
+                    catch(err){
+                        console.log(err)
+                        alert('There has been some kind of error')
+                    }
+                },
+                openViewModal(){
+                    $('#viewmodal').modal('show')
+                },
+                closeViewModal(){
+                    $('#viewmodal').modal('hide')
+                },
+                exportTasksToExcel(){
+                    var data = JSON.parse(JSON.stringify(this.filteredTasks))
+                    var temp =[]
+                    data.forEach(e => {
+                        var diff = this.dateDiff(e.assigned.completeDate,e.assigned.assignmentDate)
+                        //console.log(diff)
+                        var suffix = ""
+                        if(isNaN(diff) === false)
+                        {
+                            if( diff > 1)
+                                suffix = " days"
+                            else
+                                suffix = " day"
+                        }
+                        else{
+                            suffix = ""
+                            diff = "NA"
+                        }
+                        
+                        e['createdBy'] =  this.workerMap[e.createdBy]
+                        e['assignedTo'] = this.workerMap[e.assigned['worker_id']]
+                        e['status'] = e.assigned.status
+                        e['lastEditedBy'] =  this.user.fullName
+                        e['creationDate'] = e.creationDate === undefined ?"NA" : moment(new Date(e.creationDate)).format('MMMM Do YYYY')
+                        e['lastEditDate'] = e.lastEditDate === undefined ?"NA" : moment(new Date(e.lastEditDate)).format('MMMM Do YYYY')
+                        e['assignmentDate'] = e.assigned.assignmentDate === undefined ?"NA" : moment(new Date(e.assigned.assignmentDate)).format('MMMM Do YYYY')
+                        e['startDate'] = e.assigned.startDate === undefined ?"NA" : moment(new Date(e.assigned.startDate)).format('MMMM Do YYYY')
+                        e['reviewDate'] = e.assigned.reviewDate === undefined ?"NA" : moment(new Date(e.assigned.reviewDate)).format('MMMM Do YYYY')
+                        e['completeDate'] = e.assigned.completeDate === undefined ?"NA" : moment(new Date(e.assigned.completeDate)).format('MMMM Do YYYY')
+                        e['revisionDate'] = e.assigned.revisionDate === undefined ?"NA" : moment(new Date(e.assigned.revisionDate)).format('MMMM Do YYYY')
+                        e['reviewComment'] = e.assigned.reviewComment === undefined?'NA' : e.assigned.reviewComment
+                        e['revisionComment'] = e.assigned.revisionComment === undefined?'NA' : e.assigned.revisionComment
+                        e['completeComment'] = e.assigned.completeComment === undefined?'NA' : e.assigned.completeComment
+                        e['reviewImageUrl'] = e.assigned.reviewImageUrl
+                        e['tat'] = diff+suffix
+                        let {assigned,...y} = e
+                        temp.push(y)
+                    })
+                    //console.log(temp)
+                    const fields = [
+                        {"label" : "Task Name","value" : "taskName","default" : "NA"},
+                        {"label" : "Task Description","value" : "taskDescription","default" : "NA"},
+                        {"label" : "Created By","value" : "createdBy","default" : "NA"},
+                        {"label" : "Creation Date","value" : "creationDate","default" : "NA"},
+                        {"label" : "Last Edit Date","value" : "lastEditDate","default" : "NA"},
+                        {"label" : "Last Edited By","value" : "lastEditedBy","default" : "NA"},
+                        {"label" : "Created By","value" : "createdBy","default" : "NA"},
+                        {"label" : "Current Status","value" : "status","default" : "NA"},
+                        {"label" : "Assignment Date","value" : "assignmentDate","default" : "NA"},
+                        {"label" : "Start Date","value" : "startDate","default" : "NA"},
+                        {"label" : "Last Review Date","value" : "reviewDate","default" : "NA"},
+                        {"label" : "Last Review Comment","value" : "reviewComment","default" : "NA"},
+                        {"label" : "Last Review Screenshot URL","value" : "reviewImageUrl","default" : "NA"},
+                        {"label" : "Re-open Date","value" : "revisionDate","default" : "NA"},
+                        {"label" : "Re-open comment","value" : "revisionComment","default" : "NA"},
+                        {"label" : "Completion Date","value" : "completeDate","default" : "NA"},
+                        {"label" : "Completion Comment","value" : "completeComment","default" : "NA"},
+                        {"label" : "Turnaround Time","value" : "tat","default" : "NA"},
+                        {"label" : "Expected Effort(in Story points)","value" : "storyPoints","default" : "NA" }
+                    ]
+                    const parser = new json2csv.Parser({fields})
+                    const csv = "data:text/csv;charset=utf-8,"+parser.parse(temp)
+                    //console.log(csv)
+                    var encodedUri = encodeURI(csv);
+                    var link = document.createElement("a");
+                    link.style.visibility = 'hidden';
+                    link.setAttribute("href", encodedUri);
+                    link.setAttribute("download", "task_report.csv");
+                    document.body.appendChild(link); // Required for FF
+                    link.click();
+                    document.body.removeChild(link);
+                },
+                showBriefHistory(){
+                    this.viewModalConfig.detailed = false
+                    this.viewModalConfig.brief = true
+                },
+                viewTask(id){
+                    this.currentTask = this.filteredTasks[id]
+                    //console.log(this.currentTask)
+                    var diff = this.dateDiff(this.currentTask.assigned.completeDate,this.currentTask.assigned.assignmentDate)
+                    var suffix = ""
+                    if(isNaN(diff) === false)
+                    {
+                        if( diff > 1)
+                            suffix = "days"
+                        else
+                            suffix = "day"
+                    }
+                    else{
+                        suffix = ""
+                        diff = "NA"
+                    }
+                    this.currentTask.tat = parseFloat(this.currentTask.deadline) < 0 ? "NA" : diff+" "+suffix
+                    console.log(this.currentTask.tat)
+                    this.openViewModal()
+                },
+                openTray(){
+                    this.notifications.currentNotificationCount = 0
+                    this.notifications.newNotification = false
+                    this.notifications.lastNotificationEntry = new Date()
+                },
+                resetSort(){
+                    this.taskFilter.sort.column = ""
+                    this.taskFilter.sort.mode = ""
+                    this.filterTasks()
+                },
+                sortTask(){
+                    try{
+                        const col = this.taskFilter.sort.column
+                        const mode = this.taskFilter.sort.mode
+                        //console.log(col,mode)
+                        //console.log(this.filteredTasks)
+                        var temp = this.filteredTasks
+                        if(col === "creationDate" || col === "lastEditDate")
+                        {
+                            temp.map(e => {
+                                e[col] = e[col] === undefined ? null : new Date(e[col])
+                            })
+                        }
+                        else{
+                            temp.map(e => {
+                                e[col] = e.assigned[col] === undefined ? null : new Date(e.assigned[col])
+                            })
+                        }
+                        
+                        if(mode == 'asc'){
+                            //console.log('ascending')
+                            temp.sort((a,b)=> a[col] - b[col])
+                        }
+                        else if(mode == 'desc'){
+                            //console.log('descending')
+                            temp.sort((a,b)=> b[col] - a[col])
+                        }
+                        //for()
+                    }
+                    catch(err){
+                        console.log(err)
+                        alert('There has been some kind of error')
+                    }
+                },
+                resetDate(){
+                    this.filteredTasks = this.tasks
+                    this.taskFilter = JSON.parse(JSON.stringify({"name" : "","assignedTo" : "","status" : "","sort" : {"column" : "", "mode" : ""},"date" : {"type" : "creationDate","range" : {"start" : "","end" : ""}}}))
+                    const doc = document.getElementById('rangevalue')
+                    doc.value = ""
+                },
+                async archiveTask(id){
+                    try{
+                        console.log(id)
+                        const selectedTask = this.filteredTasks[id]
+                        console.log(selectedTask)
+                        if(selectedTask.assigned.status !== 'completed'){
+                            alert('Only completed tasks can be archived')
+                        }
+                        else{
+                            const data = await this.fetchData('/archive','POST',{"task_id" : selectedTask._id})
+                            if(data === false){
+                                localStorage.clear()
+                                window.location.href="/expired"
+                                return
+                            }
+                            else if(data["message"] ==="Task archived") {
+                                await this.getTasks()
+                                this.filterTasks()
+                                alert('Task has been successfully archived, You can now view this task in the archived tasks tab')
+                            }
+                            else{
+                                alert(data["message"])
+                            }
+                        }
+                    }catch(err){
+                        console.log(err)
+                        alert('Task could not be archived please try again')
+                    }
+                },
+                async showDetailedHistory(){
+                    this.viewModalConfig.brief = false
+                    this.viewModalConfig.detailed = true
+                    this.viewModalConfig.loading = true
+                    try{
+                        const data = await this.fetchData('/history',"POST",{id : this.currentTask._id})
+                        if(data === false){
+                            localStorage.clear()
+                            window.location.href="/expired"
+                            return
+                        }
+                        else if(data["message"] === "successful"){
+                            this.viewModalConfig.loading = false
+                            this.viewModalConfig.history = data["data"]
+                        }
+                        else{
+                            console.log(data["message"])
+                            alert('Ther has been some problem please refresh the page')
+                        }
+                    }catch(err){
+                        console.log(err)
+                        this.closeViewModal()
+                    }
+                },
+                async getProfile(){
+                    try{
+                        const data = await this.fetchData('/profile',"POST")
+                        if(data === false){
+                            localStorage.clear()
+                            window.location.href="/expired"
+                            return
+                        }
+                        else if(data["message"] === 'successful'){
+                            this.user = data["user"]
+                        }
+                        else{
+                            console.log(data["message"])
+                            alert('Ther has been some problem please refresh the page')
+                        }
+                    }
+                    catch(err){
+                        console.log(err)
+                        alert('Ther has been some problem please refresh the page')
+                    }
+                },
+                async getWorkers(){
+                    try{
+                        const data = await this.fetchData('/map/admin',"GET")
+                        if(data === false){
+                            localStorage.clear()
+                            window.location.href="/expired"
+                            return
+                        }
+                        else if(data["message"] === "successful"){
+                            this.workerMap  = data["data"]
+                            for(var item in this.workerMap){
+                                this.workers.push({"id" : item,"name" : this.workerMap[item]})
+                            }
+                        }
+                        else{
+                            console.log(data["message"])
+                            alert('Ther has been some problem please refresh the page')
+                        }
+                    }
+                    catch(err){
+                        console.log(err)
+                        alert('Ther has been some problem please refresh the page')
+                    }
+                    
+                },
+                async getNotifications(){
+                    try{
+                        const data = await this.fetchData('/notifications',"POST",{"last" : this.notifications.lastNotificationEntry})
+                        if(data === false){
+                            localStorage.clear()
+                            window.location.href="/expired"
+                            return
+                        }
+                        else if(data["message"] === "successful"){
+                            this.notifications.tab = data["data"].concat(this.notifications.tab)
+                            this.notifications.tab.forEach(e => {
+                                e["creationDate"] = moment(new Date(e["creationDate"])).format('MMMM Do YYYY, h:mm a');
+                                if(["New task","Task re-assigned","Task edited","Task assigned","Task re-opened","Task completed","Task started","Task in review"].indexOf(e["title"]) !== -1){
+                                    e["allowView"] = true
+                                }
+                            })
+                            this.notifications.dropdown = this.notifications.tab.slice(0,this.notifications.countInDropdown)
+                            this.currentNotificationCount += data["data"].length
+                        }
+                        else{
+                            console.log(data["message"])
+                            alert("Notification service is not working")
+                        }
+                    }
+                    catch(err){
+                        console.log(err)
+                        alert("Notification service is not working")
+                    }
+                },
+                async getTasks(){
+                    try{
+                        const data = await this.fetchData('/list/worker','GET')
+                        if(data === false){
+                            localStorage.clear()
+                            window.location.href="/expired"
+                            return
+                        }
+                        else if(data["message"] === "successful"){
+                            this.tasks.splice(0)
+                            this.taskSummary = JSON.parse(JSON.stringify({created : 0,assigned : 0,started : 0,inReview : 0,completed : 0,createdNotAssigned : 0,assignedNotStarted : 0,startedNotReview : 0,reviewedNotCompleted : 0,pastDeadline : 0}))
+                            data["data"].forEach(e => {
+                                //console.log(e.assigned.status)
+                                var deadline = moment(new Date(e.creationDate)).add(parseInt(e.storyPoints),'days')
+                                const timeToDeadline = (deadline.diff(moment(new Date()),'hours')/24).toPrecision(2)
+                                //console.log(deadline,timeToDeadline)
+                                e['deadline'] = timeToDeadline > 0 || e.assigned.status !== "completed"? timeToDeadline : 1000
+                                if(e.assigned.status === "created"){
+                                    e["isCreated"] = true
+                                    this.taskSummary.created += 1
+                                }
+                                else if(e.assigned.status === "assigned"){
+                                    e["isAssigned"] = true
+                                    this.taskSummary.created +=1
+                                    this.taskSummary.assigned +=1
+                                }
+                                else if(e.assigned.status === "started"){
+                                    e["isStarted"] = true
+                                    this.taskSummary.created +=1
+                                    this.taskSummary.assigned +=1
+                                    this.taskSummary.started +=1
+                                }
+                                else if(e.assigned.status === "review"){
+                                    e["inReview"] = true
+                                    this.taskSummary.created +=1
+                                    this.taskSummary.assigned +=1
+                                    this.taskSummary.started +=1
+                                    this.taskSummary.inReview +=1
+                                }
+                                else if(e.assigned.status === "completed"){
+                                    e["isCompleted"] = true
+                                    this.taskSummary.created +=1
+                                    this.taskSummary.assigned +=1
+                                    this.taskSummary.started +=1
+                                    this.taskSummary.inReview +=1
+                                    this.taskSummary.completed +=1
+                                }
+                                if(e.deadline < 0){
+                                    this.taskSummary.pastDeadline += 1
+                                }
+                                else if(e.deadline <= 2){
+                                    e["isUrgent"] = true
+                                }
+                                this.tasks.push(e)
+                            })
+                            this.tasks.sort((a,b)=> {return a.deadline - b.deadline})
+                            this.taskSummary.createdNotAssigned = this.taskSummary.created - this.taskSummary.assigned
+                            this.taskSummary.assignedNotStarted = this.taskSummary.assigned - this.taskSummary.started
+                            this.taskSummary.startedNotReview = this.taskSummary.started - this.taskSummary.inReview
+                            this.taskSummary.reviewedNotCompleted = this.taskSummary.inReview - this.taskSummary.completed
+                            //console.log(this.tasks)
+                        }   
+                        else{
+                            alert("Please refresh again there has been some error")
+                        }
+                    }catch(err){
+                        console.log(err)
+                        alert("There has been some error, Please refresh and try again")
+                    }
+
+                },
+                async startTask(){
+                    const data = await this.fetchData('/start',"POST",{task : this.currentTask._id})
+                    if(data === false){
+                        localStorage.clear()
+                        window.location.href="/expired"
+                        return
+                    }
+                    else if(data["message"] === "Task marked started successfully"){
+                        alert(data["message"])
+                        await this.getTasks()
+                        this.filterTasks()
+                    }
+                    else{
+                        alert(data["message"])
+                    }
+                    this.closeStartModal()
+                },
+                setImage(){
+                    const image = document.getElementById('customFile')
+                    const label = document.getElementById('filelabel')
+                    if(image.files.length === 0){
+                        this.generateAlert('review',"A screenshot must be uploaded","warning")
+                        return
+                    }
+                    label.innerText = image.files[0].name
+                    this.reviewImage = image.files[0]
+                    console.log(this.reviewImage)
+                    var reader = new FileReader();
+                    reader.onload = function(e) {
+                        $('#preview').attr('src', e.target.result);
+                    }
+                    reader.readAsDataURL(this.reviewImage)
+                },
+                async reviewTask(){
+                    var reader = new FileReader();
+                    if(this.currentTask.assigned.status !== 'started'){
+                        alert('Unstarted tasks cannot be marked for review')
+                        return
+                    }
+                    else if(this.currentTask.assigned.reviewComment === undefined){
+                        this.generateAlert('review',"Comments cannot be left empty","warning")
+                        return
+                    }
+                    else if(this.reviewImage === null){
+                        this.generateAlert('review',"A screenshot must be uploaded","warning")
+                        return
+                    }
+                    else if(this.currentTask.deadline < 0){
+                        this.generateAlert("review","The deadline for this task is already past","error")
+                        return
+                    }
+                    reader.onload = (async function(e){
+                        console.log(reader.result)
+                        const data  = await this.fetchData('/review',"POST",{task : this.currentTask._id,comment : this.currentTask.assigned.reviewComment,image : reader.result},true)
+                        if(data === false){
+                            localStorage.clear()
+                            window.location.href="/expired"
+                            return
+                        }
+                        else if(data["message"] === "Task marked in-review successfully"){
+                            this.generateAlert('review',data["message"],"success")
+                            await this.getTasks()
+                            this.filterTasks()
+                        }
+                        else{
+                            this.generateAlert('review',data["message"],"warning")
+                        }
+                        this.closeReviewModal()
+                    }).bind(this)
+                    reader.readAsDataURL(this.reviewImage)
+                },
+                async updateUser(){
+                    try{
+                        var tcs = this.updatedUser.tcs_email
+                        if(this.validateEmail(tcs) == false || tcs.split("@")[2] === "tcs.com"){
+                            this.generateAlert("update","Enter proper TCS email","error") 
+                            return
+                        }
+                        else if(/^\d+$/.test(this.updatedUser.empID) === false){
+                            this.generateAlert("update","Employee ID must contain only numbers","error") 
+                            return
+                        }
+                        else if(/^\d+$/.test(this.updatedUser.wwID) === false){
+                            this.generateAlert("update","WWID must contain only numbers","error") 
+                            return
+                        }
+                        else{
+                            const data = await this.fetchData('/update',"POST",{"data" : JSON.stringify(this.updatedUser)})
+                            if(data === false){
+                                localStorage.clear()
+                                window.location.href="/expired"
+                                return
+                            }
+                            else if(data["message"] === "Profile updated successfully"){
+                                this.generateAlert("update","Profile updated successfully","success")
+                                //console.log(data["user"])
+                                this.user = data["user"]
+                                this.updatedUser = data["user"]
+                            }
+                            else{
+                                this.generateAlert("update",data["message"],"error")
+                            }
+                        }
+                    }
+                    catch(err){
+                        console.log(err)
+                        this.generateAlert("update",err.errmsg,"error")
+                    }
+                },
+                async updatePassword(){
+                    try{
+                        if(this.changePassword.current === "" || this.changePassword.new === "" || this.changePassword.newRepeat === "")
+                        {
+                            //console.log('jiq')
+                            this.generateAlert("password","All fields are mandatory","error")
+                            return
+                        }
+                        else if(this.changePassword.new !== this.changePassword.newRepeat){
+                            this.generateAlert("password","New passwords don't match","error")
+                            return
+                        }
+                        else if(this.passwordPolicy(this.changePassword.new) === false){
+                            this.generateAlert("password","Set password according to password policy","error")
+                            return
+                        }
+                        else if(this.changePassword.new === this.changePassword.current){
+                            this.generateAlert("password","Old and new passwords cannot be same","error")
+                            return
+                        }
+                        else{
+                            const obj = {
+                                id : this.user._id,
+                                old : md5(this.changePassword.old),
+                                new : md5(this.changePassword.new)
+                            }
+                            //console.log(obj)
+                            const data = await this.fetchData('/password',"POST",obj)
+                            if(data === false){
+                                localStorage.clear()
+                                window.location.href="/expired"
+                                return
+                            }
+                            //console.log(data)
+                            else if(data["message"] === "Password changed successfully"){
+                                this.generateAlert("password","Password has been successfully changed","success")
+                            }
+                            else{
+                                this.generateAlert("password",data["message"],"error")
+                            }
+                        }
+                    }catch(err){
+                        console.log(err)
+                        this.generateAlert("password","There has been some error","error")
+                    }
+                },
+                passwordPolicy(str){
+                    return true
+                },
+                generateAlert(name,text,type){
+                    const alertElement = document.getElementById(`${name}alert`)
+                    const alertText = document.getElementById(`${name}alerttext`)
+                    alertText.innerText = text
+                    alertElement.classList.remove('alert-warning')
+                    if(type === "warning"){
+                        alertElement.classList.add('alert-warning')
+                    }
+                    else if(type === "error"){
+                        alertElement.classList.add('alert-danger')
+                    }
+                    else if(type === "success"){
+                        alertElement.classList.add('alert-success')
+                    }
+                    alertText.innerHTML = text
+                    alertElement.style.display="block"
+                },
+                async logout(){
+                   try{
+                        const data = await this.fetchData('/logout',"POST",null)
+                        if(data === false){
+                            localStorage.clear()
+                            window.location.href="/expired"
+                            return
+                        }
+                        else if(data["message"] === "Logged out successfully"){
+                            localStorage.clear()
+                            window.location.href="/"
+                            return
+                        }
+                        else{
+                            console.log(data["message"])
+                            alert("There has been some error logging out,Please try again")
+                        }
+                   }catch(err){
+                        console.log(err)
+                        alert("There has been some error logging out,Please try again")
+                   }
+                },
+                async fetchData(endpoint,method,body = null){
+                    try{
+                        var resp = await fetch(`${this.apiUrl}${endpoint}`,{
+                            method : method,
+                            credentials : "include",
+                            headers : {
+                                'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+                            },
+                            body : body !== null? this.generateRequestBody(body) : null
+                        })
+                        if(resp.status === 401){
+                            return false
+                        }
+                        else{
+                            var data = await resp.json()
+                            return data
+                        }
+                    }catch(err){
+                        console.log(err)
+                        return null
+                    }
+                }
+            }
+        })
+    </script>
+</body>
+</html>

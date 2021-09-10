@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="This application is a pc based task manager use for small teams to arrange and manage their individual tasks">
+    <meta name="keywords" content="Task manager,scheduler,JIRA,task,task management,tools,lowcode tool">
+    <meta name="author" content="Suparno Karmakar">
+    <title>Task Manager</title>
+    <link rel="stylesheet" href="assets/css/bootstrap.min.css">
+    <link rel="stylesheet" href="assets/css/daterangepicker.min.css">
+    <link rel="stylesheet" href="assets/css/bootstrap-vue.min.css">
+    <link rel="stylesheet" href="assets/css/style.min.css">
+</head>
+<body style="overflow-y: hidden;">
+    <div class="container-fluid main" id="app"style="padding:0px;overflow-x:hidden;">
+        <nav class="navbar navbar-expand-lg navbar-dark justify-content-between" style="background-color: #563d7c;">
+            <a class="navbar-brand" href="/">Task Manager</a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNavDropdown" aria-controls="navbarNavDropdown" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNavDropdown">
+                <ul class="navbar-nav ml-auto">
+                    <li class="nav-item">
+                        <button class="btn btn-outline-warning my-2 my-sm-0 mr-2" type="button" v-on:click="()=>{window.location.href='/stats'}">Analytics Dashboard</button>
+                    </li>
+                    <li><button class="btn btn-outline-warning my-2 my-sm-0" type="button" v-on:click="openLoginModal()">Login or Signup</button></li>
+                </ul>
+            </div>
+        </nav>
+        <div class="row">
+            <div class="jumbotron jumbotron-fluid back">
+                <div class="container-fluid p-0">
+                  <div class="row d-flex justify-content-center">
+                      <div class="col-auto">
+                        <h1 class="display-2 ml-2">Task Manager</h1>
+                      </div>
+                  </div>
+                </div>
+            </div>
+        </div>
+        <div class="modal fade login-register-form" role="dialog" id="loginmodal">
+            <div class="modal-dialog modal-sm">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <div class="nav nav-tabs" id="nav-tab" role="tablist">
+                            <a class="nav-link active" data-toggle="tab" href="#login-form" v-on:click="openLoginSection()"> Login <i class="fa fa-user" aria-hidden="true"></i></a>
+                            <a class="nav-link"data-toggle="tab" href="#registration-form"> Register <i class="fa fa-pencil" aria-hidden="true"></i></a>
+                        </div>
+                        <span style="font-size: 1.5rem; font-weight: 500;cursor:pointer;" class="mr-2" v-on:click="closeLoginModal()">&times;</span>
+                    </div>
+                    <div class="modal-body">
+                        <div class="tab-content">
+                            <div id="login-form" class="tab-pane fade show active">
+                                <form v-if="loginFormConfig.login" onsubmit="login($event)">
+                                    <div class="alert alert-warning alert-dismissible fade show" role="alert" id="loginalert" style="display: none;">
+                                        <span id="loginalerttext"></span>
+                                        <button type="button" class="close" aria-label="Close" v-on:click="closeAlert('login')">
+                                          <span aria-hidden="true" >&times;</span>
+                                        </button>
+                                    </div>
+                                    <!--div class="form-group">
+                                        <label for="role">Role</label>
+                                        <select class="form-control" aria-label="Default select example" id="role" v-model="loginObject.role" autofocus>
+                                            <option selected disabled value="">Select Role</option>
+                                            <option value="admin">Manager</option>
+                                            <option value="worker">Associate</option>
+                                          </select>
+                                    </div-->
+                                    <div class="form-group">
+                                        <label for="email">Email</label>
+                                        <input type="email" class="form-control" v-model="loginObject.email" id="email" placeholder="Enter email" name="email" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="pwd">Password:</label>
+                                        <input type="password" class="form-control" id="pwd" v-model="loginObject.password" placeholder="Enter password" name="pwd" required>
+                                    </div>
+                                    <div class="checkbox">
+                                        <label><input type="checkbox" name="remember" class="mr-2" v-on:click="show($event)">Show Password</label>
+                                    </div>
+                                    <button type="submit" class="btn btn-primary" v-on:click="login($event)">Login</button>
+                                </form>
+                                <form v-if="loginFormConfig.forgotPassword">
+                                    <div class="alert alert-warning alert-dismissible fade show" role="alert" id="forgotalert" style="display: none;">
+                                        <span id="forgotalerttext"></span>
+                                        <button type="button" class="close" aria-label="Close" v-on:click="closeAlert('forgot')">
+                                          <span aria-hidden="true" >&times;</span>
+                                        </button>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="empid">Employee ID</label>
+                                        <input type="number" class="form-control" v-model="forgotObject.empID" id="empid" placeholder="Enter your employee ID" name="empid">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="forgotusername">Username</label>
+                                        <input type="email" class="form-control" v-model="forgotObject.username" id="forgotusername" placeholder="Enter your username" name="forgotusername">
+                                    </div>
+                                    <button type="button" class="btn btn-primary" v-on:click="forgotPassword()">Reset Password</button>
+                                </form>
+                                <div class="row justify-content-center mt-2" v-if="loginFormConfig.login">
+                                    <span class="small">Don't have an account? <a href="#" v-on:click="openRegistration()">Sign Up</a></span>
+                                </div>
+                                <div class="row justify-content-center mt-1" v-if="loginFormConfig.login">
+                                    <span class="small">Don't remember password? <a href="#" v-on:click="openForgotPassword()">Forgot Password</a></span>
+                                </div>
+                                <div class="row justify-content-center mt-1" v-if="loginFormConfig.forgotPassword">
+                                    <span class="small">Remember password? <a href="#" v-on:click="openLoginSection()">Sign in</a></span>
+                                </div>
+                            </div>
+                            <div id="registration-form" class="tab-pane fade">
+                                <form onsubmit="register($event)">
+                                    <div class="alert alert-warning alert-dismissible fade show" role="alert" id="registeralert" style="display: none;">
+                                        <span id="registeralerttext"></span>
+                                        <button type="button" class="close" aria-label="Close" v-on:click="closeAlert('register')" >
+                                          <span aria-hidden="true" >&times;</span>
+                                        </button>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="newrole">Role</label>
+                                        <select class="form-control" aria-label="Default select example" id="newrole" v-model="registerObject.role" autofocus>
+                                            <option selected disabled value="">Select Role</option>
+                                            <option value="admin">Manager</option>
+                                            <option value="worker">Associate</option>
+                                          </select>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="newemail">Email</label>
+                                        <input type="email" class="form-control" id="newemail" placeholder="Enter JnJ email" name="newemail" v-model="registerObject.email">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="newpwd">Password</label>
+                                        <input type="password" class="form-control" id="newpwd" placeholder="New password" name="newpwd" v-model="registerObject.password">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="newpwdre">Re-enter Password</label>
+                                        <input type="password" class="form-control" id="newpwdre" placeholder="Re enter password" name="newpwd" v-model="registerObject.rePassword">
+                                    </div>
+                                    <button type="submit" class="btn btn-primary" v-on:click="register($event)">Register</button>
+                                </form>
+                                <div class="row justify-content-center mt-2">
+                                    <span class="small">Already have an account? <a v-on:click="openLogin()" href="#">Log In</a></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="assets/js/md5.js"></script>
+    <script src="assets/js/vue@2.js"></script>
+    <script src="assets/js/moment.min.js"></script>
+    <script src="assets/js/jquery-3.6.0.js"></script>
+    <script src="assets/js/popper.min.js"></script>
+    <script src="assets/js/bootstrap.js"></script>
+    <script src="assets/js/bootstrap-select.min.js"></script>
+    <script>
+        const apiUrl = "http://localhost:3000"
+        const userDomain = ""
+        const secondaryDomain = "tcs.com"
+        var app = new Vue({
+            el : "#app",
+            data : ()=>{
+                return {
+                    apiUrl : "http://localhost:3000/api",
+                    unsecureApiUrl : "http://localhost:3000",
+                    loginObject : {
+                        email : "",
+                        password : "",
+                        role : "",
+                    },
+                    registerObject : {
+                        email : "",
+                        password : "",
+                        rePassword : "",
+                        role : "",
+                    },
+                    loginFormConfig : {
+                        "login" : true,
+                        "forgotPassword" : false
+                    },
+                    forgotObject : {
+                        empID : "",
+                        username : "",
+                    }
+                }
+            },
+            created : async function(){
+                if(this.hostReachable === false){
+                    window.location.href="/no"
+                }
+                if(localStorage.getItem("loggedIn") !== null && localStorage.getItem('role') === "admin"){
+                    window.location.href = "/admin"
+                }
+                else if(localStorage.getItem("loggedIn") !== null && localStorage.getItem('role') === "worker"){
+                    window.location.href = "/worker"
+                }
+                else{
+                    localStorage.clear()
+                }
+                $('#loginmodal').on('show.bs.modal', function (e) {
+                    console.log('hi');
+                    var input = $(this).find("#role");  // cache the variable
+                    input.focus(); // focus it
+                })
+            },
+            methods : {
+                hostReachable() {
+                    // Handle IE and more capable browsers
+                    var xhr = new ( window.ActiveXObject || XMLHttpRequest )( "Microsoft.XMLHTTP" );
+                    // Open new request as a HEAD to the root hostname with a random param to bust the cache
+                    xhr.open( "HEAD", "//" + window.location.hostname + "/?rand=" + Math.floor((1 + Math.random()) * 0x10000), false );
+                    // Issue request and handle response
+                    try {
+                      xhr.send();
+                      return ( xhr.status >= 200 && (xhr.status < 300 || xhr.status === 304) );
+                    } catch (error) {
+                      return false;
+                    }
+                  
+                },
+                reset(){
+                    this.loginObject = JSON.parse(JSON.stringify({email : "",password : "",role : "",}))
+                    this.registerObject = JSON.parse(JSON.stringify({email : "",password : "",rePassword : "",role : ""}))
+                    this.forgotObject = JSON.parse(JSON.stringify({"empID" : "","username" : ""}))
+                    this.closeAlert('registration')
+                    this.closeAlert('login')
+                    this.closeAlert('forgot')
+                },
+                openForgotPassword(){
+                    this.reset()
+                    this.loginFormConfig.login = false
+                    this.loginFormConfig.forgotPassword = true
+                },
+                openLoginSection(){
+                    this.reset()
+                    this.loginFormConfig.login = true
+                    this.loginFormConfig.forgotPassword = false
+                },
+                openLoginModal(){
+                    this.reset()
+                    $('#loginmodal').modal('show');
+                },
+                openRegistration(){
+                    $('#nav-tab a[href="#registration-form"]').tab('show')
+                },
+                openLogin(){
+                    $('#nav-tab a[href="#login-form"]').tab('show')
+                },
+                closeLoginModal(){
+                    this.closeAlert('login')
+                    this.closeAlert('register')
+                    $('#loginmodal').modal('hide')
+                },
+                show(e){
+                    const pwd = document.getElementById('pwd')
+                    if(e.target.checked){
+                        pwd.type = "text"
+                    }
+                    else{
+                        pwd.type = "password"
+                    }
+                },
+                async login(e){
+                    e.preventDefault()
+                    console.log('Hi')
+                    if(this.loginObject.email === ""){
+                        this.generateAlert('login',"Email cannnot be empty","warning")
+                        return
+                    }
+                    else if(this.validateEmail(this.loginObject.email) === false){
+                        this.generateAlert('login',"Email is not properly formatted","warning")
+                        return
+                    }
+                    /*else if(this.loginObject.email.split("@")[1] !== userDomain ){
+                        this.generateAlert('login',"Email must be JnJ email","warning")
+                        return
+                    }*/
+                    else if(this.loginObject.password === ""){
+                        this.generateAlert('login',"Password cannnot be empty","warning")
+                        return
+                    }
+                    else{
+                        const obj = {
+                            email : this.loginObject.email,
+                            password : md5(this.loginObject.password),
+                            role : this.loginObject.role
+                        }
+                        var resp = await fetch(`${apiUrl}/login`,{
+                            method : "POST",
+                            credentials : "include",
+                            headers: {
+                                'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'
+                            },
+                            body : this.generateRequestBody(obj)
+                        })
+                        var data = await resp.json()
+                        console.log(data)
+                        if(data["role"] !== undefined){
+                            localStorage.setItem("role",data["role"])
+                            //localStorage.setItem("token",data["token"])
+                            localStorage.setItem("loggedIn","true")
+                            if(data["role"] === "admin"){
+                                window.location.href="/admin"
+                            }
+                            else if(data["role"] === "worker"){
+                                window.location.href="/worker"
+                            }
+                            else{
+                                localStorage.removeItem('role')
+                            }
+                        }
+                        else{
+                            this.generateAlert("login","Incorrect credentials","error")
+                            return
+                        }
+                    }
+                },
+                passwordPolicy(str){
+                    return true
+                },
+                async register(event){
+                    event.preventDefault()
+                    console.log(this.registerObject)
+                    if(this.registerObject.email === ""){
+                        this.generateAlert('register',"Email cannnot be empty","warning")
+                        return
+                    }
+                    else if(this.validateEmail(this.registerObject.email) === false){
+                        this.generateAlert('register',"Email is not properly formatted","warning")
+                        return
+                    }
+                    /*else if(this.registerObject.email.split("@")[1] !== userDomain ){
+                        this.generateAlert('register',"Email must be JnJ email","warning")
+                        return
+                    }*/
+                    else if(this.registerObject.password === ""){
+                        this.generateAlert('register',"Password cannnot be empty","warning")
+                        return
+                    }
+                    else if(this.registerObject.rePassword === ""){
+                        this.generateAlert('register',"Password cannnot be empty","warning")
+                        return
+                    }
+                    else if(this.registerObject.password !== this.registerObject.rePassword){
+                        this.generateAlert('register',"Passwords don't match","warning")
+                        return
+                    }
+                    else if(this.registerObject.role === ""){
+                        this.generateAlert('register',"Please select a role","warning")
+                        return
+                    }
+                    else{
+                        console.log(this.registerObject)
+                        const obj = {
+                            email : this.registerObject.email,
+                            password : md5(this.registerObject.password),
+                            role : this.registerObject.role
+                        }
+                        var resp = await fetch(`${apiUrl}/signup`,{
+                            method : "POST",
+                            headers: {
+                                'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'
+                            },
+                            body : this.generateRequestBody(obj)
+                        })
+                        var data = await resp.json()
+                        if(data["message"] === "Signup successful"){
+                            this.generateAlert("register","User has been successfully registered","success")
+                        }
+                        else{
+                            this.generateAlert("register","User could not be registered,please try again","error")  
+                        }
+                    }
+                },
+                async forgotPassword(){
+                    try{
+                        if(this.forgotObject.empID === ""){
+                            this.generateAlert('forgot',"Employee ID must be filled","error")
+                            return
+                        }
+                        else if(this.forgotObject.username === ""){
+                            this.generateAlert('forgot',"Username must be filled","error")
+                            return
+                        }
+                        /*else if(this.forgotObject.username.split('@')[1] !== userDomain){
+                            this.generateAlert('forgot',"This is not a genuine username","error")
+                            return
+                        }*/
+                        else{
+                            this.closeAlert('forgot')
+                            var data =await this.fetchData('/forgot','POST',this.generateRequestBody(this.forgotObject))
+                            console.log(data)
+                            if(data["message"] === 'successful'){
+                                this.generateAlert('forgot','New password will be sent to your JnJ email','success')
+                                return
+                            }
+                            else{
+                                this.generateAlert('forgot',data["message"],'error')
+                                return  
+                            }
+                        }
+                    }catch(err){
+                        console.log(err)
+                        this.generateAlert('forgot','Password not reset, please contact admin','warning')
+                    }
+                },
+                generateAlert(name,text,type){
+                    const alertElement = document.getElementById(`${name}alert`)
+                    const alertText = document.getElementById(`${name}alerttext`)
+                    if(alertElement && alertText){
+                        alertText.innerText = text
+                        alertElement.classList.remove('alert-warning')
+                        if(type === "warning"){
+                            alertElement.classList.add('alert-warning')
+                        }
+                        else if(type === "error"){
+                            alertElement.classList.add('alert-danger')
+                        }
+                        else if(type === "success"){
+                            alertElement.classList.add('alert-success')
+                        }
+                        alertText.innerHTML = text
+                        alertElement.style.display="block"
+                    }
+                },
+                validateEmail(email) {
+                    const re = /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
+                    return re.test(String(email).toLowerCase());
+                },
+                closeLoginModal(){
+                    this.reset()
+                    this.openLoginSection()
+                    $('#loginmodal').modal('hide')
+                },
+                generateRequestBody(details){
+                    var formBody = [];
+                    for (var property in details) {
+                    var encodedKey = encodeURIComponent(property);
+                    var encodedValue = encodeURIComponent(details[property]);
+                    formBody.push(encodedKey + "=" + encodedValue);
+                    }
+                    formBody = formBody.join("&");
+                    return formBody
+                },
+                closeAlert(name){
+                    const item = document.getElementById(`${name}alert`)
+                    if(item){
+                        item.style.display = "none"
+                    }
+                },
+                async fetchData(endpoint,method,body = null){
+                    try{
+                        var resp = await fetch(`${this.unsecureApiUrl}${endpoint}`,{
+                            method : method,
+                            credentials : "include",
+                            headers : {
+                                'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+                            },
+                            body : body !== null? this.generateRequestBody(body) : null
+                        })
+                        if(resp.status === 401){
+                            return false
+                        }
+                        else{
+                            var data = await resp.json()
+                            return data
+                        }
+                    }catch(err){
+                        console.log(err)
+                        return null
+                    }
+                }
+            }
+        })
+    </script>
+</body>
+</html>

@@ -1,0 +1,2646 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="This application is a pc based task manager use for small teams to arrange and manage their individual tasks">
+    <meta name="keywords" content="Task manager,scheduler,JIRA,task,task management,tools,lowcode tool">
+    <meta name="author" content="Suparno Karmakar">
+    <link rel="stylesheet" href="assets/font-awesome-4.7.0/css/font-awesome.min.css">
+    <link rel="stylesheet" href="assets/css/bootstrap.min.css">
+    <link rel="stylesheet" href="assets/css/daterangepicker.min.css">
+    <link rel="stylesheet" href="assets/css/bootstrap-vue.min.css">
+    <link rel="stylesheet" href="assets/css/style.min.css">
+    <title>Admin Dashboard</title>
+    <style>
+        input[type=number]::-webkit-inner-spin-button, 
+        input[type=number]::-webkit-outer-spin-button { 
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            margin: 0; 
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid" id="app"style="padding:0px;overflow-x:hidden;overflow-y:hidden;">
+        <nav class="navbar navbar-expand-lg navbar-dark justify-content-between" style="background-color: #563d7c;">
+            <a class="navbar-brand" href="dash_admin.html">Task Manager</a>
+            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarSupportedContent">
+                <ul class="navbar-nav ml-auto">
+                    <li class="nav-item active">
+                    <a class="nav-link" href="#">Hi, {{user.username}}!</a>
+                    </li>
+                    <li class="nav-item dropdown dropleft">
+                        <a class="nav-link" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" v-on:click="openTray()">
+                            <i class="fa fa-bell" style="font-size: 1.4rem;" v-bind:class="{'deep' : notifications.newNotification}"></i>
+                            <span class="badge badge-pill badge-warning badge-notify">{{notifications.currentNotificationCount === 0 ? "" : notifications.currentNotificationCount}}</span>
+                        </a>
+                        <div class="dropdown-menu" aria-labelledby="navbarDropdown" style="width:300px;padding:0px;">
+                            <div class="alert alert-light" role="alert" v-for="(notification,index) of notifications.dropdown" :id="index" style="padding: 0.05rem;margin-bottom:0.25rem;">
+                                <p class="alert-heading small row justify-content-between" style="margin-bottom: 2px;"><strong class="col-auto ml-1">{{notification.title}}</strong><span class="col-7 text-muted mr-1" style="text-align: right;">{{notification.creationDate}}</span></p>
+                                <p class="mb-0 small ml-1">{{notification.description}} by {{userMap[notification.from]}}</p>
+                                <div class="row justify-content-end">
+                                    <a href="#" class="small float-right mr-4" v-on:click="viewFromNotification(notification.task_id)" v-if="notification.allowView">View task</a>
+                                </div>
+                                <hr style="margin-top:3px !important;margin-bottom:0px !important;">
+                            </div>
+                            <span class="small row justify-content-center">
+                                <div class="col-6 mb-1 text-center">
+                                    <a href="#" v-on:click="openNotificationsModal()" >See all notifications</a>
+                                </div>
+                            </span>
+                        </div>
+                    </li>
+                    <li class="nav-item dropdown dropleft">
+                        <a class="nav-link" href="#" id="navbarDropdown" role="button" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                            <i class="fa fa-bars" style="font-size: 1.4rem;"></i>
+                        </a>
+                        <div class="dropdown-menu" aria-labelledby="navbarDropdown">
+                            <a class="dropdown-item" href="#" v-on:click="openNewTaskModal('save')">Create New Task</a>
+                            <a href="/bulk" class="dropdown-item">Bulk Upload Data</a>
+                            <a href="#" class="dropdown-item" v-on:click = "openSearchUserModal()">Search User</a>
+                            <a class="dropdown-item" href="#" v-on:click="openNotificationsModal()">Notifications</a>
+                            <a class="dropdown-item" href="/stats" target="_blank">View Stats</a>
+                            <a class="dropdown-item" href="#" v-on:click="logout()">Logout</a>
+                        </div>
+                    </li>
+                    <li class="nav-item">
+                        <a href="#" class="nav-link" v-on:click="openInfoModal()" data-toggle="tooltip" data-placement="bottom" title="Help">
+                            <i class="fa fa-info-circle" style="font-size: 1.4rem;"></i>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </nav>
+        <div class="modal fade" id="bulkuploadmodal" data-backdrop="static" data-keyboard="false" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-xl">
+              <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title ml-2 mt-2" id="exampleModalLabel">Bulk Data Entry Module</h5>
+                    <span aria-hidden="true" v-on:click="closeBulkUploadModal()" class="mr-2" style="font-size:2rem;font-weight:500;cursor:pointer;">&times;</span>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-warning alert-dismissible fade show" role="alert" id="bulkalert" style="display: none;">
+                        <span id="bulkalerttext"></span>
+                        <button type="button" class="close" aria-label="Close" v-on:click="closeAlert('bulk')">
+                          <span aria-hidden="true" >&times;</span>
+                        </button>
+                    </div>
+                    <div class="row d-flex justify-content-around">
+                        <div class="col-auto ml-2">
+                            <button class="btn btn-primary" v-on:click="downloadTemplate('tasks')">Template for task data</button>
+                        </div>
+                        <div class="col-auto">
+                            <button class="btn btn-primary" v-on:click="downloadTemplate('users')">Template for user data</button>
+                        </div>
+                        <div class="col-auto">
+                            <select name="" id="type" class="form-control" v-model="bulkUploadModalConfig.importType" v-on:change="run($event,'select')">
+                                <option value="" selected disabled>Select import type </option>
+                                <option value="users">User Data</option>
+                                <option value="tasks">Task Data</option>
+                            </select>
+                        </div>
+                        <div class="col-auto">
+                            <button class="btn btn-primary" v-on:click="selectFile(bulkUploadModalConfig.importType)">Select Data File</button>
+                            <input type="file" id="fileinput" style="display: none;" v-on:change="run($event,'file')">
+                            <span id="filename" class="ml-2">File : {{this.bulkUploadModalConfig.fileName === ""?"Not Selected" : this.bulkUploadModalConfig.fileName}}</span>
+                            <span id="close" class="ml-1" v-if="this.bulkUploadModalConfig.fileName !== ''" v-on:click="cancelFile()"><i class="fa fa-close "></i></span>
+                        </div>
+                    </div>
+                    <div class="row d-flex justify-content-center" v-if="bulkUploadModalConfig.loading === true && bulkUploadModalConfig.dataFlag === false">
+                        <div class="lds-facebook"><div></div><div></div><div></div></div>
+                    </div>
+                    <div class="row d-flex justify-content-center mt-2" v-if="bulkUploadModalConfig.dataFlag === true && bulkUploadModalConfig.loading === false" style="overflow-x: auto !important;">
+                        <b-table class="table table-bordered usertable" v-if="bulkUploadModalConfig.importType === 'users'"id="importtable" :per-page="bulkUploadModalConfig.perPage" :current-page="bulkUploadModalConfig.currentPage" :items="this.bulkUploadModalConfig.processedData" :fields="bulkUploadModalConfig.fields"  style="max-width: 100% !important;">
+                            <template #cell(userType)="data">{{data.item.userType === 'admin'?'Manager' : data.item.userType === 'worker'?'Associate' : "NA"}}</template>
+                        </b-table>
+                        <div class="col-12 border-dark" v-if="bulkUploadModalConfig.importType === 'tasks'" style="width:200% !important;padding-left:10px !important;padding-right:10px !important;">
+                            <b-table class="table table-bordered nopadtable" id="importtable" :per-page="bulkUploadModalConfig.perPage" :current-page="bulkUploadModalConfig.currentPage" :items="bulkUploadModalConfig.processedData" :fields="bulkUploadModalConfig.fields"  style="width: 200% !important;overflow-x: scroll !important;">
+                                <template #head(storyPoints)="data" class="bg-dark text-light">
+                                    {{data.label}}<span class="small">(in story points)</span>
+                                </template>
+                                <template #cell(creationDate)="data">{{data.item.creationDate !== "" ?moment(data.item.creationDate).format('MMMM DD YYYY') : "NA"}}</template>
+                                <template #head(reviewImageUrl)="data" >
+                                    {{data.label}} <span class="small">(Drag and Drop your review Images)</span>
+                                </template>
+                                <template #cell(reviewImageUrl)="data" style="min-height: 100% !important;">
+                                    <b-input-group size="lg" style="height:100% !important;cursor:pointer;">
+                                        <b-form-file :id="'upload'+data.index.toString()" v-model="bulkUploadModalConfig.processedData[data.index].fileToBeUploaded"  :file-name-formatter="formatNames(data.index)" placeholder="Browse images" drop-placeholder="Drop image here" style="min-height: 100% !important;margin-bottom :0px !important;" accept="image/*"></b-form-file>
+                                        <b-input-group-append v-if="bulkUploadModalConfig.processedData[data.index].fileToBeUploaded !== undefined && bulkUploadModalConfig.processedData[data.index].fileToBeUploaded !== null">
+                                            <b-button variant="outline-secondary" v-on:click="clearUpload(data.index)" style="font-size: 1.40rem;padding-left: 5px;padding-right:5px;padding-top:0px; padding-bottom:0px;font-weight:700;">&times;</b-button>
+                                        </b-input-group-append>
+                                    </b-input-group>
+                                </template>
+                                <template #cell(status)="data">{{data.item.status.charAt(0).toUpperCase()+data.item.status.slice(1)}}</template>
+                                <template #cell(startDate)="data">{{data.item.startDate !== "NA" ?moment(data.item.startDate).format('MMMM DD YYYY') : "NA"}}</template>
+                                <template #cell(assignmentDate)="data">{{data.item.assignmentDate !== "NA" ?moment(data.item.assignmentDate).format('MMMM DD YYYY') : "NA"}}</template>
+                                <template #cell(reviewDate)="data">{{data.item.reviewDate !== "NA" ?moment(data.item.reviewDate).format('MMMM DD YYYY') : "NA"}}</template>
+                                <template #cell(revisionDate)="data">{{data.item.revisionDate !== "NA" ?moment(data.item.revisionDate).format('MMMM DD YYYY') : "NA"}}</template>
+                                <template #cell(completeDate)="data">{{data.item.completeDate !== "NA" ?moment(data.item.completeDate).format('MMMM DD YYYY') : "NA"}}</template>
+                                <template #cell(lastEditDate)="data">{{data.item.lastEditDate !== "NA" ?moment(data.item.lastEditDate).format('MMMM DD YYYY') : "NA"}}</template>
+                            </b-table>
+                        </div>
+                    </div>
+                    <div class="row d-flex justify-content-center">
+                        <div class="col-auto d-flex justify-content-end mt-1" style="width: 96.5%;padding-right:0px;padding-left:0px;" v-if="bulkUploadModalConfig.dataFlag === true && bulkUploadModalConfig.loading === false">
+                            <div class="col-auto" style="padding-right: 0px;">
+                                <b-pagination v-model="bulkUploadModalConfig.currentPage" :total-rows="uploadRows" :per-page="bulkUploadModalConfig.perPage" aria-controls="usertable"></b-pagination>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row d-flex justify-content-center" v-if="bulkUploadModalConfig.loading == false && bulkUploadModalConfig.dataFlag == false">
+                        <div class="col-auto">
+                            <div class="display-4">No data available</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer" style="padding: 0.2rem;">
+                    <button type="button" class="btn btn-primary" v-on:click="uploadData(bulkUploadModalConfig.importType)">Upload and process data</button>
+                    <button type="button" class="btn btn-secondary" v-on:click="closeBulkUploadModal()">Close</button>
+                </div>
+              </div>
+            </div>
+        </div>
+        <div class="modal fade" id="notificationmodal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-scrollable modal-dialog-centered modal-lg">
+                <div class="modal-content" style="overflow-x: hidden;">
+                    <div class="modal-header">
+                        <h5 class="modal-title ml-2 mt-2" id="exampleModalLabel">Notifications</h5>
+                        <span aria-hidden="true" v-on:click="closeNotificationModal()" class="mr-2" style="font-size:2rem;font-weight:500;cursor:pointer;">&times;</span>
+                    </div>
+                    <div class="modal-body" style="padding: 0px;">
+                        <div class="card my-1" v-for="notification of notifications.tab">
+                            <div class="card-body" style="padding: 0.5rem;">
+                            <div class="row justify-content-between"><span class="col-auto h5">{{notification.title}}</span><span class="col-auto text-muted h6 text-right">{{notification.creationDate}}</span></div>
+                                {{notification.description}} by {{userMap[notification.from]}}
+                                <div class="row justify-content-end">
+                                    <a href="#" class="mr-4" v-on:click="viewFromNotification(notification.task_id)" v-if="notification.allowView">View task</a>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row justify-content-center" v-if="notifications.tab.length == 0">
+                            <span class="h3">No notifications to show</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="modal fade" id="viewmodal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-lg" role="document">
+              <div class="modal-content">
+                <div class="modal-header">
+                  <h5  class="modal-title ml-2 mt-2" id="exampleModalLabel">View task </h5>
+                    <span aria-hidden="true" v-on:click="closeViewModal()" class="mr-2" style="font-size:2rem;font-weight:500;cursor:pointer;">&times;</span>
+                </div>
+                <div class="modal-body">
+                    <div class="row d-flex justify-content-start">
+                        <div class="col-4" style="padding-right: 0px;padding-left:10px;">
+                            <div class="form-group">
+                                <label for="name">Task Name</label>
+                                <textarea class="form-control" id="name" rows="1" disabled v-model="currentTask.taskName"></textarea>
+                            </div>
+                        </div>
+                        <div class="col-4" style="padding-right: 0px;padding-left:10px;">
+                            <div class="form-group">
+                                <label for="desc">Task Description</label>
+                                <textarea class="form-control" id="desc" rows="1" disabled v-model="currentTask.taskDescription"></textarea>
+                            </div>
+                        </div>
+                        <div class="col-2" style="padding-right: 0px;padding-left:10px;">
+                            <div class="form-group">
+                                <label for="tat">Turnaround Time</label>
+                                <input type="text" class="form-control" disabled id="tat" v-model="currentTask.tat">
+                            </div>
+                        </div>
+                        <div class="col-2" style="padding-right: 10px;padding-left:10px;">
+                            <div class="form-group">
+                                <label for="status">Current Status</label>
+                                <input type="text" class="form-control" disabled id="status" :value="toTitleCase(currentTask.assigned.status)">
+                            </div>
+                        </div>
+                    </div>
+                    <!--div class="row d-flex justify-content-end ml-1" style="margin-right: 1px;">
+                        <div class="col-auto" style="padding-right: 0px;" style="width:98% !important">
+                            <a href="#" class="small link" v-on:click="showDetailedHistory()" v-if="viewModalConfig.brief">View Complete History</a>
+                            <a href="#" class="small link" v-on:click="showBriefHistory()" v-if="viewModalConfig.detailed">View Brief History</a>
+                        </div>
+                    </div-->
+                    <div class="row d-flex justify-content-center" v-if="viewModalConfig.detailed">
+                        <div class="col-auto">
+                            <span class="display-4" style="font-size: 3rem;" v-if="viewModalConfig.loading">Please wait while we fetch the data</span>
+                        </div>
+                        <b-table class="table-bordered lesspad" style="width:98% !important" v-if="viewModalConfig.detailed && !viewModalConfig.loading" :fields="this.viewModalConfig.fields" :items="this.viewModalConfig.history">
+                            <template #cell(title)="data">
+                                {{data.item.title}}
+                            </template>
+                            <template #cell(creationDate)="data">
+                                {{moment(new Date(data.item.creationDate)).format('MMMM DD YYYY')}}
+                            </template>
+                            <template #cell(from)="data">
+                                {{userMap[data.item.from]}}
+                            </template>
+                        </b-table>
+                    </div>
+                    <div class="row d-flex justify-content-center">
+                        <table class="table-bordered" style="width:98% !important" v-if="viewModalConfig.brief">
+                            <thead>
+                                <tr class="text-center bg-dark text-light">
+                                    <th colspan="4">Brief Task History</th>
+                                </tr>
+                            </thead>
+                            <thead class="thead-dark">
+                                <tr>
+                                    <th scope="col">Status</th>
+                                    <th scope="col">Date</th>
+                                    <th scope="col">Comments provided</th>
+                                    <th scope="col">User</th>
+                                </tr>
+                            </thead>
+                            <tr v-if="currentTask.creationDate !== undefined && currentTask.creationDate !== null">
+                                <td>Created</td>
+                                <td>{{moment(new Date(currentTask.creationDate)).format('MMMM DD YYYY')}}</td>
+                                <td>NA</td>
+                                <td>{{user.username}}</td>
+                            </tr>
+                            <tr v-if="currentTask.assigned.assignmentDate !== undefined && currentTask.assigned.assignmentDate !== null">
+                                <td>Assigned to</td>
+                                <td>{{moment(new Date(currentTask.assigned.assignmentDate)).format('MMMM DD YYYY')}}</td>
+                                <td>NA</td>
+                                <td>{{workerMap[currentTask.assigned.worker_id]}}</td>
+                            </tr>
+                            <tr v-if="currentTask.lastEditDate !== undefined && currentTask.lastEditDate !== null">
+                                <td>Edited by</td>
+                                <td>{{moment(new Date(currentTask.assigned.assignmentDate)).format('MMMM DD YYYY')}}</td>
+                                <td>NA</td>
+                                <td>{{user.username}}</td>
+                            </tr>
+                            <tr v-if="currentTask.assigned.startDate !== undefined && currentTask.assigned.startDate !== null">
+                                <td>Started</td>
+                                <td>{{moment(new Date(currentTask.assigned.startDate)).format('MMMM DD YYYY')}}</td>
+                                <td>NA</td>
+                                <td>{{workerMap[currentTask.assigned.worker_id]}}</td>
+                            </tr>
+                            <tr v-if="currentTask.assigned.reviewDate !== undefined && currentTask.assigned.reviewDate !== null">
+                                <td>Sent for review</td>
+                                <td>{{moment(new Date(currentTask.assigned.reviewDate)).format('MMMM DD YYYY')}}</td>
+                                <td>{{currentTask.assigned.reviewComment}}&nbsp;&nbsp;<a :href="currentTask.assigned.reviewImageUrl" target="_blank" class="small" v-if="currentTask.assigned.reviewImageUrl !== undefined">(Image Attached)</a></td>
+                                <td>{{workerMap[currentTask.assigned.worker_id]}}</td>
+                            </tr>
+                            <tr v-if="currentTask.assigned.revisionDate !== undefined && currentTask.assigned.revisionDate !== null">
+                                <td>Re-opened</td>
+                                <td>{{moment(new Date(currentTask.assigned.revisionDate)).format('MMMM DD YYYY')}}</td>
+                                <td>{{currentTask.assigned.revisionComment}}</td>
+                                <td>{{user.username}}</td>
+                            </tr>
+                            <tr v-if="currentTask.assigned.completeDate !== undefined && currentTask.assigned.completeDate !== null">
+                                <td>Completed</td>
+                                <td>{{moment(new Date(currentTask.assigned.completeDate)).format('MMMM DD YYYY')}}</td>
+                                <td>{{currentTask.assigned.completeComment}}</td>
+                                <td>{{user.username}}</td>
+                            </tr>
+                            <tr v-if="parseFloat(currentTask.deadline) < 0" class="text-danger">
+                                <td>Past Deadline</td>
+                                <td>{{moment(new Date(currentTask.creationDate)).add(currentTask.storyPoints,'days').format('MMMM DD YYYY')}}</td>
+                                <td>NA</td>
+                                <td>{{user.username}}</td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+              </div>
+            </div>
+        </div>
+        <div class="modal fade" id="passwordmodal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+            <div class="modal-dialog" role="document">
+              <div class="modal-content">
+                <div class="modal-header">
+                  <h5 class="modal-title ml-2 mt-2" id="exampleModalLabel">Change Password</h5>
+                  <span aria-hidden="true" v-on:click="closeChangePasswordModal()" class="mr-2" style="font-size:2rem;font-weight:500;cursor:pointer;">&times;</span>
+                </div>
+                <div class="modal-body">
+                    <form action="">
+                        <div class="alert alert-warning alert-dismissible fade show" role="alert" id="passwordalert" style="display: none;">
+                            <span id="passwordalerttext"></span>
+                            <button type="button" class="close" aria-label="Close" v-on:click="closeAlert('password')">
+                              <span aria-hidden="true" >&times;</span>
+                            </button>
+                        </div>
+                        <input type="text" name="email" value="..." autocomplete="username email" style="display: none;">
+                        <div class="form-group">
+                            <label for="currentpwd">Current Password</label>
+                            <div class="input-group mb-3">
+                                <input type="password" class="form-control" placeholder="Enter current password" id="currentpasswordinput" aria-label="Enter current password" aria-describedby="button-addon2" v-model="changePassword.current" autocomplete="current-password">
+                                <div class="input-group-append">
+                                  <button class="btn btn-outline-secondary" type="button" id="current" v-on:click="show($event.target.id)">Show</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="currentpwd">New Password</label>
+                            <div class="input-group mb-3">
+                                <input type="password" class="form-control" placeholder="Enter new password" id="newpasswordinput" aria-label="Enter new password" aria-describedby="button-addon2" v-model="changePassword.new" autocomplete="new-password">
+                                <div class="input-group-append">
+                                  <button class="btn btn-outline-secondary" type="button" id="new"  v-on:click="show($event.target.id)">Show</button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="currentpwdre">Re-enter new Password</label>
+                            <div class="input-group mb-3">
+                                <input type="password" class="form-control" placeholder="Re-enter new password" id="renewpasswordinput" aria-label="Re-enter new password" aria-describedby="button-addon2" v-model="changePassword.newRepeat" autocomplete="new-password">
+                                <div class="input-group-append">
+                                  <button class="btn btn-outline-secondary" type="button" id="renew"  v-on:click="show($event.target.id)">Show</button>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                  <button type="button" class="btn btn-secondary" v-on:click="closeChangePasswordModal()">Close</button>
+                  <button type="button" class="btn btn-primary" v-on:click="updatePassword()">Update Password</button>
+                </div>
+              </div>
+            </div>
+        </div>
+        <div class="modal fade" id="assignmodal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+              <div class="modal-content">
+                <div class="modal-header">
+                  <h5 class="modal-title ml-2 mt-2" id="exampleModalLabel">Assign Task - {{currentTask.taskName}}</h5>
+                  <span aria-hidden="true" v-on:click="closeAssignModal()" class="mr-2" style="font-size:2rem;font-weight:500;cursor:pointer;">&times;</span>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-warning alert-dismissible fade show" role="alert" id="assignalert" style="display: none;">
+                        <span id="assignalerttext"></span>
+                        <button type="button" class="close" aria-label="Close" v-on:click="closeAlert('assign')">
+                          <span aria-hidden="true" >&times;</span>
+                        </button>
+                    </div>
+                  <p style="margin-bottom: 5px;">{{currentTask.taskDescription}}</p>
+                  <select name="" id="assignedMember" class="form-control" v-model="currentTask.assigned.worker_id">
+                    <option value="" disabled selected>Choose associate</option>
+                    <option value="NA">None</option>
+                    <option :value="worker.id" v-for="worker of workers">{{worker.name}}</option>
+                  </select>
+                </div> 
+                <div class="modal-footer">
+                  <button type="button" class="btn btn-secondary" v-on:click="closeAssignModal()">Close</button>
+                  <button type="button" class="btn btn-primary" v-on:click="assignTask()">Assign Task</button>
+                </div>
+              </div>
+            </div>
+        </div>
+        <div class="modal fade" id="advancedfiltermodal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-lg" role="document">
+              <div class="modal-content">
+                <div class="modal-header">
+                  <h5 class="modal-title ml-2 mt-2" id="exampleModalLabel">Advanced Filters</h5>
+                  <span aria-hidden="true" v-on:click="closeAdvancedFilters()" class="mr-2" style="font-size:2rem;font-weight:500;cursor:pointer;">&times;</span>
+                </div>
+                <div class="modal-body">
+                  <div class="row d-flex justify-content-center form">
+                        <div class="col-auto">
+                            <select name="typeOfDate" id="type" class="form-control" v-model="taskFilter.date.type">
+                                <option value="" disabled selected>Choose date type</option>
+                                <option value="creationDate">Creation Date</option>
+                                <option value="lastEditDate">Last Edit Date</option>
+                                <option value="assignmentDate">Assignment Date</option>
+                                <option value="startDate">Start Date</option>
+                                <option value="reviewDate">Review Date</option>
+                                <option value="revisionDate">Re-open Date</option>
+                                <option value="completeDate">Completion Date</option>
+                            </select>
+                        </div>
+                        <div class="col-5">
+                            <div class="input-group mb-3" id="reportrange">
+                                <div class="input-group-prepend">
+                                  <span class="input-group-text"><i class="fa fa-calendar"></i></span>
+                                </div>
+                                <input type="text" class="form-control" placeholder="Select date range" id="rangevalue" disabled>
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                          <button class="btn btn-dark" v-on:click="filterTasks()">Filter Tasks</button>
+                          <button class="btn btn-dark" v-on:click="resetDate()">Reset</button>
+                        </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+        </div>
+        <div class="modal fade" id="searchusermodal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-xl" role="document">
+              <div class="modal-content">
+                <div class="modal-header">
+                  <h5 class="modal-title ml-2 mt-2" id="exampleModalLabel">Search Users</h5>
+                  <span aria-hidden="true" v-on:click="closeSearchUserModal()" class="mr-2" style="font-size:2rem;font-weight:500;cursor:pointer;">&times;</span>
+                </div>
+                <div class="modal-body">
+                  <div class="row d-flex justify-content-center form">
+                    <div class="col-3 form-group" style="padding-left: 3px;padding-right: 3px;">
+                        <input type="text" class="form-control" id="searchuser" v-model="searchUser.username" placeholder="Search by Username">
+                    </div>
+                    <div class="col-2 form-group"  style="padding-left: 3px;padding-right: 3px;">
+                        <input type="number" class="form-control" id="searchempid" v-model="searchUser.empID" placeholder="Search by Emp ID">
+                    </div> 
+                    <div class="col-3 form-group"  style="padding-left: 3px;padding-right: 3px;">
+                        <input type="text" class="form-control" id="searchrole" v-model="searchUser.name" placeholder="Search by Name">
+                    </div>
+                    <div class="col-2 form-group"  style="padding-left: 3px;padding-right: 3px;">
+                        <select name="" id="searchrole" class="form-control" v-model="searchUser.role">
+                            <option value="">Select Role</option>
+                            <option value="worker">Associate</option>
+                            <option value="admin">Manager</option>
+                        </select>
+                    </div>
+                    <div class="col-2 row" style="padding-right: 25px; padding-left:3px;">
+                        <div class="col-6">
+                            <button class="btn btn-primary" v-on:click="filterUsers()">Search</button>
+                        </div>
+                        <div class="col-6" >
+                            <button class="btn btn-primary" v-on:click="resetSearch()">Reset</button>
+                        </div>
+                    </div>
+                  </div>
+                  <div class="row d-flex justify-content-center">
+                    <b-table class="table table-bordered usertable" id="usertable" :per-page="userTable.perPage" :current-page="userTable.currentPage" :items="filteredUsers" :sticky-header="true" :fields="userTable.fields">
+                    </b-table>
+                  </div>
+                  <div class="row d-flex justify-content-center">
+                    <div class="col-auto d-flex justify-content-between" style="width: 96.5%;padding-right:0px;padding-left:0px;">
+                        <div class="col-auto" style="padding-left: 0px;">
+                            <i class="fa fa-file-excel-o mr-4 excel mt-1" style="font-size: 2rem;" v-on:click="exportUsersToExcel()" data-toggle="tooltip" data-placement="right" title="Export to Excel"></i>
+                        </div>
+                        <div class="col-auto" style="padding-right: 0px;">
+                            <b-pagination v-model="userTable.currentPage" :total-rows="rows" :per-page="userTable.perPage" aria-controls="usertable"></b-pagination>
+                        </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+        </div>
+        <div class="modal fade" id="completemodal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+              <div class="modal-content">
+                <div class="modal-header">
+                  <h5 class="modal-title ml-2 mt-2" id="exampleModalLabel">Complete task - {{currentTask.taskName}}</h5>
+                  <span aria-hidden="true" v-on:click="closeCompleteModal()" class="mr-2" style="font-size:2rem;font-weight:500;cursor:pointer;">&times;</span>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-warning alert-dismissible fade show" role="alert" id="completealert" style="display: none;">
+                        <span id="completealerttext"></span>
+                        <button type="button" class="close" aria-label="Close" v-on:click="closeAlert('complete')">
+                          <span aria-hidden="true" >&times;</span>
+                        </button>
+                    </div>
+                    <div class="row d-flex justify-content-center mb-2 over" style="position: relative;">
+                        <div class="row d-flex justify-content-end" style="width: 100% !important;">
+                        </div>
+                        <div class="row d-flex justify-content-center" id="item">
+                            <div class="col-11">
+                                <img :src="this.currentTask.assigned.reviewImageUrl" alt="" class="img-fluid rounded border border-dark" id="preview">
+                            </div>
+                        </div>
+                    </div>
+                    <textarea name="" id="comment" cols="30" rows="3" class="form-control" placeholder="Comments" v-model="currentTask.assigned.completeComment"></textarea>
+                </div>
+                <div class="modal-footer">
+                  <button type="button" class="btn btn-secondary" v-on:click="closeCompleteModal()">Close</button>
+                  <button type="button" class="btn btn-danger" v-on:click="completeTask('redo')">Redo task</button>
+                  <button type="button" class="btn btn-success" v-on:click="completeTask()">Complete task</button>
+                </div>
+              </div>
+            </div>
+        </div>
+        <div class="modal fade" id="deletemodal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+              <div class="modal-content">
+                <div class="modal-header">
+                  <h5 class="modal-title ml-2 mt-2" id="exampleModalLabel">Are you sure, you want to delete task - {{currentTask.taskName}}</h5>
+                  <span aria-hidden="true" v-on:click="closeDeleteModal()" class="mr-2" style="font-size:2rem;font-weight:500;cursor:pointer;">&times;</span>
+                </div>
+                <div class="modal-footer">
+                  <button type="button" class="btn btn-secondary" v-on:click="closeDeleteModal()">Close</button>
+                  <button type="button" class="btn btn-danger" v-on:click="deleteTask()">Delete task</button>
+                </div>
+              </div>
+            </div>
+        </div>
+        <div class="modal fade" id="sortmodal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+              <div class="modal-content">
+                <div class="modal-header">
+                  <h5 class="modal-title ml-2 mt-2" id="exampleModalLabel">Select Sort Criteria</h5>
+                  <span aria-hidden="true" v-on:click="closeSortModal()" class="mr-2" style="font-size:2rem;font-weight:500;cursor:pointer;">&times;</span>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-6 form-group">
+                            <label for="fieldname">Column Name</label>
+                            <select name="" id="fieldname" class="form-control" v-model="taskFilter.sort.column">
+                                <option value="" disabled selected>Choose sort column</option>
+                                <option value="creationDate">Creation Date</option>
+                                <option value="lastEditDate">Last Edit Date</option>
+                                <option value="assignmentDate">Assignment Date</option>
+                                <option value="startDate">Start Date</option>
+                                <option value="reviewDate">Review Date</option>
+                                <option value="revisionDate">Re-open Date</option>
+                                <option value="completeDate">Completion Date</option>
+                            </select>
+                        </div>
+                        <div class="col-6 form-group">
+                            <label for="mode">Sort Mode</label>
+                            <select name="" id="mode" class="form-control" v-model="taskFilter.sort.mode">
+                                <option value="" disabled selected>Choose sort mode</option>
+                                <option value="asc">Ascending</option>
+                                <option value="desc">Descending</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                  <button type="button" class="btn btn-secondary" v-on:click="closeSortModal()">Close</button>
+                  <button type="button" class="btn btn-info" v-on:click="resetSort()">Reset</button>
+                  <button type="button" class="btn btn-primary" v-on:click="sortTask()">Sort Tasks</button>
+                </div>
+              </div>
+            </div>
+        </div>
+        <div class="modal fade" id="updatemodal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+              <div class="modal-content">
+                <div class="modal-header justify-content-between">
+                    <h5 class="modal-title ml-2 mt-2" id="exampleModalLabel">Update Profile</h5>
+                    <span aria-hidden="true" v-on:click="closeUpdateModal()" class="mr-2" style="font-size:2rem;font-weight:500;cursor:pointer;">&times;</span>
+                </div>
+                <div class="modal-body">
+                  <form action="/">
+                    <div class="alert alert-warning alert-dismissible fade show" role="alert" id="updatealert" style="display: none;">
+                        <span id="updatealerttext"></span>
+                        <button type="button" class="close" aria-label="Close" v-on:click="closeAlert('update')">
+                          <span aria-hidden="true" >&times;</span>
+                        </button>
+                    </div>
+                    <div class="row">
+                        <div class="col-4 form-group">
+                            <label for="empid">Employee ID</label>
+                            <input type="text" class="form-control" id="empid" aria-describedby="emailHelp" placeholder="Enter your employee ID" v-model="updatedUser.empID">
+                        </div>
+                        <div class="col-4 form-group">
+                            <label for="wwid">WWID</label>
+                            <input type="text" class="form-control" id="wwid" aria-describedby="emailHelp" placeholder="Enter your WWID" v-model="updatedUser.wwID">
+                        </div>
+                        <div class="col-4 form-group">
+                            <label for="fullname">Full Name</label>
+                            <input type="text" class="form-control" id="fullname" aria-describedby="emailHelp" placeholder="Enter your full name" v-model="updatedUser.fullName">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-6 form-group">
+                            <label for="username">Username(JnJ Email)</label>
+                            <input type="email" class="form-control" id="username" aria-describedby="emailHelp" placeholder="Enter your username(JnJ Email)" disabled v-model="updatedUser.username">
+                        </div>
+                        <div class="col-6 form-group">
+                            <label for="tcs_email">TCS Email</label>
+                            <input type="email" class="form-control" id="tcs_email" aria-describedby="emailHelp" placeholder="Enter your TCS Email" v-model="updatedUser.tcs_email">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-4 form-group">
+                            <label for="domain">Domain</label>
+                            <input type="text" class="form-control" id="domain" aria-describedby="emailHelp" placeholder="Enter your Domain" v-model="updatedUser.domain">
+                        </div>
+                        <div class=" col-4 form-group">
+                            <label for="tower">Tower</label>
+                            <input type="email" class="form-control" id="tower" aria-describedby="emailHelp" placeholder="Enter your Tower" v-model="updatedUser.tower">
+                        </div>
+                        <div class="col-4 form-group">
+                            <label for="position">Position</label>
+                            <input type="email" class="form-control" id="position" aria-describedby="emailHelp" placeholder="Enter your Position" v-model="updatedUser.role">
+                        </div>
+                    </div>
+                  </form>
+                </div>
+                <div class="modal-footer">
+                  <button type="button" class="btn btn-secondary" v-on:click="closeUpdateModal()">Cancel</button>
+                  <button type="button" class="btn btn-primary" v-on:click="updateUser()">Save changes</button>
+                </div>
+              </div>
+            </div>
+        </div>
+        <div class="modal fade" id="taskmodal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+            <div class="modal-dialog" role="document">
+              <div class="modal-content">
+                <div class="modal-header justify-content-between">
+                  <h5 class="modal-title ml-2 mt-2" id="taskLabel" >{{taskModalConfig.header}}</h5>
+                  <span aria-hidden="true" v-on:click="closeTaskModal()" class="mr-2" style="font-size:2rem;font-weight:500;cursor:pointer;">&times;</span>
+                </div>
+                <div class="modal-body">
+                    <form action="/">
+                        <div class="alert alert-warning alert-dismissible fade show" role="alert" id="taskalert" style="display: none;">
+                            <span id="taskalerttext"></span>
+                            <button type="button" class="close" aria-label="Close" v-on:click="closeAlert('task')">
+                              <span aria-hidden="true" >&times;</span>
+                            </button>
+                        </div>
+                        <div class="form-group">
+                            <label for="name">Task Name</label>
+                            <input type="text" class="form-control" id="name" aria-describedby="emailHelp" placeholder="Enter task name" v-model="currentTask.taskName" :disabled="taskModalConfig.usage === 'view'">
+                        </div>
+                        <div class="form-group">
+                            <label for="name">Task Description</label>
+                            <textarea name="" id="desc" cols="30" rows="3" class="form-control" placeholder="Enter task description" v-model="currentTask.taskDescription" :disabled="taskModalConfig.usage === 'view'"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="duration">Expected effort in story points<span class="ml-2 small">(1sp = 8 hrs or 1 working day)</span></label>
+                            <input type="number" min="2" max="13" class="form-control" id="duration" aria-describedby="duration" placeholder="Enter task duration" v-model="currentTask.storyPoints" :disabled="taskModalConfig.usage === 'view'">
+                        </div>
+                        <div class="form-group" v-if="taskModalConfig.usage !== 'view'">
+                            <label for="to">Assign To</label>
+                            <select name="" id="to" class="form-control" v-model="currentTask.assigned.worker_id">
+                                <option value="" disabled selected>Choose associate</option>
+                                <option value="NA">None</option>
+                                <option :value="worker.id" v-for="worker of workers">{{worker.name}}</option>
+                            </select>
+                        </div>
+                        <div class="form-group" v-if="taskModalConfig.usage == 'view'">
+                            <label for="toview">Assigned To</label>
+                            <input type="text" class="form-control" id="toview" v-model="workerMap[currentTask.assigned.worker_id]">
+                        </div>
+                        <div class="form-check" v-if="taskModalConfig.usage === 'save'">
+                            <input class="form-check-input" type="checkbox" id="defaultCheck1" v-on:click="addMore($event)">
+                            <label class="form-check-label" for="defaultCheck1">
+                              Add More Tasks
+                            </label>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer" v-if="taskModalConfig.usage !== 'view'">
+                  <button type="button" class="btn btn-secondary"  v-on:click="closeTaskModal()" >Close</button>
+                  <button type="button" class="btn btn-primary" id="taskbutton" v-on:click="createNewTask()" v-if="taskModalConfig.usage === 'save'">{{taskModalConfig.save}}</button>
+                  <button type="button" class="btn btn-primary" id="taskbutton" v-on:click="editTask()" v-if="taskModalConfig.usage === 'edit'">{{taskModalConfig.save}}</button>
+                </div>
+              </div>
+            </div>
+        </div>
+        <div class="modal fade" id="infomodal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLongTitle" aria-hidden="true">
+            <div class="modal-dialog modal-lg" role="document">
+              <div class="modal-content">
+                <div class="modal-header">
+                  <h5 class="modal-title ml-2 mt-2" id="exampleModalLongTitle">Legend</h5>
+                  <span aria-hidden="true" v-on:click="closeInfoModal()" class="mr-2" style="font-size:2rem;font-weight:500;cursor:pointer;">&times;</span>
+                </div>
+                <div class="modal-body row d-flex justify-content-center">
+                  <table class="table table-bordered lesspad" style="width: 99%;">
+                      <thead>
+                          <th class="bg-dark text-white">Color Code</th>
+                          <th class="bg-dark text-white">Explanation</th>
+                          <th class="bg-dark text-white">Performed By</th>
+                      </thead>
+                      <tr>
+                        <td class="bg-light"></td>
+                        <td>The task has been created but not assigned</td>
+                        <td>Manager</td>
+                    </tr>
+                      <tr>
+                          <td class="bg-secondary"></td>
+                          <td>The task has been assigned but not started</td>
+                          <td>Manager</td>
+                      </tr>
+                      <tr>
+                        <td class="bg-primary"></td>
+                        <td>The task has been started but not reviewed</td>
+                        <td>Worker</td>
+                    </tr>
+                    <tr>
+                        <td class="bg-warning"></td>
+                        <td>The task has been sent for review</td>
+                        <td>Worker</td>
+                    </tr>
+                    <tr>
+                        <td class="bg-success"></td>
+                        <td>The task has been completed</td>
+                        <td>Start</td>
+                    </tr>
+                    <tr>
+                        <td class="bg-error"></td>
+                        <td>The task has not been completed within deadline</td>
+                        <td>NA</td>
+                    </tr>
+                    <tr>
+                        <td class="border-danger" style="border-width:2px !important;"></td>
+                        <td>The red border on a task card means the task is nearing deadline</td>
+                        <td>NA</td>
+                    </tr>
+                  </table>
+                </div>
+              </div>
+            </div>
+        </div>
+        <div class="row justify-content-around" style="max-width: 99% !important;">
+            <div class="col-sm-12 col-md-6 col-lg-3">
+                <div class="row ml-1 mt-2 mb-1 d-flex justify-content-start">
+                    <div class="card" style="width: 19rem;">
+                        <div class="card-body" style="padding: 0.5rem;">
+                          <h5 class="card-title" style="margin-bottom: .25rem;">Profile</h5>
+                          <p class="card-text" style="margin-bottom: .35rem;">
+                              Employee ID : {{user.empID}} <br>
+                              WWID : {{user.wwID}} <br>
+                              Name : {{user.fullName}} <br>
+                              TCS Email : {{user.tcs_email}} <br>
+                              JnJ Email : {{user.username}} <br>
+                              Domain : {{user.domain}} || Tower : {{user.tower}} <br>
+                              Role : {{user.role}} || Type : {{user.userType === "admin" ? "Manager" : "Associate"}}
+                          </p>
+                          <div class="row justify-content-around">
+                              <button class="btn btn-primary" v-on:click="openUpdateModal()">Update Profile</button>
+                              <button class="btn btn-primary" v-on:click="openChangePasswordModal()">Change Password</button>
+                          </div>
+                        </div>
+                      </div>
+                </div>
+                <div class="row ml-1 d-flex justify-content-start">
+                    <div class="card" style="width: 19rem;">
+                        <div class="card-body"  style="padding: 0.5rem;">
+                          <h5 class="card-title">Task Summary</h5>
+                          <h6 class="card-subtitle mb-2 text-muted">Count of tasks assigned by you</h6>
+                          <p class="card-text">
+                            <strong>Tasks Created : {{taskSummary.created}} </strong><br>
+                              Tasks created but not assigned : {{taskSummary.createdNotAssigned}} <br>
+                              Tasks assigned but not started : {{taskSummary.assignedNotStarted}} <br>
+                              Tasks started but not in review : {{taskSummary.startedNotReview}} <br>
+                              Tasks in review but not completed : {{taskSummary.reviewedNotCompleted}} <br>
+                              <strong>Tasks completed : {{taskSummary.completed}}</strong><br>
+                              <strong class="text-danger">Tasks past deadline : {{taskSummary.pastDeadline}}</strong>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                <div class="row ml-1 mt-1">
+                </div>
+            </div>
+            <div class="col-9">
+                <div class="row justify-content-between mb-1 p-sm-0 p-lg-1">
+                    <div class="col-sm-12 col-md-1 col-lg-1 mt-1 p-sm-0 p-lg-1">
+                        <h2>Tasks</h2>
+                    </div>
+                    
+                    <div class="col-sm-12 col-md-10 col-lg-6 mt-1 row d-flex justify-content-end p-sm-0 p-lg-1">
+                        <div class="col-sm-12 col-md-10 col-lg-10 mt-1" style="padding-left: 0.1rem;" v-if="filteredTasks.length > 0">
+                            <vue-paginate :page-count="noOfPages"  :click-handler="clickCallback" container-class="pagination" page-class="page-item" page-link-class="page-link" prev-class="page-item" prev-link-class="page-link" next-class="page-item" next-link-class="page-link" :prev-text="taskPage.previousText" :next-text="taskPage.nextText" :first-last-button="taskPage.firstLast"></vue-paginate>
+                        </div>
+                        <div class="col-sm-12 col-md-1 col-lg-1 mt-1 p-sm-0 p-lg-1">
+                            <i class="fa fa-file-excel-o mt-1 mr-4 excel" aria-hidden="true" style="font-size: 2.4rem;font-weight:bold;"data-toggle="tooltip" data-placement="left" title="Export to Excel" v-on:click="exportTasksToExcel()"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="row justify-content-around">
+                    <div class="col-sm-12 col-md-3 col-lg-4 mb-1 p-sm-0 pl-md-1 p-lg-1">
+                        <input type="text" class="form-control" id="taskname" placeholder="Search by Task Name" v-model="taskFilter.name">
+                    </div>
+                    <div class="col-sm-12 col-md-3 col-lg-3 mb-1 p-sm-0 pl-md-1 p-lg-1">
+                        <select name="" id="taskassigned" class="form-control" v-model="taskFilter.assignedTo">
+                            <option value="" selected disabled>Choose Assigned To</option>
+                            <option value="">All</option>
+                            <option :value="worker.id" v-for="worker in workers">{{worker.name}}</option>
+                        </select>
+                    </div>
+                    <div class="col-sm-12 col-md-3 col-lg-2 mb-1 p-sm-0 pl-md-1 p-lg-1">
+                        <select name="" id="status" class="form-control" v-model="taskFilter.status">
+                            <option value="" selected disabled>Select Status</option>
+                            <option value="">All</option>
+                            <option value="created">Created</option>
+                            <option value="assigned">Assigned</option>
+                            <option value="started">Started</option>
+                            <option value="review">Review</option>
+                            <option value="completed">Completed</option>
+                        </select>
+                    </div>
+                    <div class="col-sm-12 col-md-4 col-lg-3 row mb-1 p-sm-0 p-md-1 p-lg-1">
+                        <div class="col-4">
+                            <button class="btn btn-dark" v-on:click="filterTasks()">Filter</button>
+                        </div>
+                        <div class="col-4">
+                            <button class="btn btn-dark" v-on:click="reset()">Reset</button>
+                        </div>
+                        <div class="col-4">
+                            <button class="btn btn-dark" v-on:click="openSortModal()">Sort</button>
+                        </div>
+                    </div>
+                </div>
+                <div class="row d-flex justify-content-end">
+                    <div class="col-sm-12 col-md-3 col-lg-2 mr-4 p-0 text-right">
+                    <a href="#" class="small" v-on:click="openAdvancedFilters()">Advanced filters</a>
+                    </div>
+                </div>
+                <div class="row justify-content-start" v-if="filteredTasks.length > 0">
+                    <div class="col-sm-12 col-md-4 col-lg-3 my-1 p-0" style="padding-left: 0px;" v-for="(task,index) of displayedTasks">
+                        <div class="card" style="width: 97%;" v-bind:class="{'border-danger' : (task.isUrgent && task.assigned.status !== 'completed') ,'bg-light' : task.assigned.status === 'created','bg-secondary' : task.assigned.status === 'assigned','bg-primary' : task.assigned.status === 'started','bg-warning' : task.assigned.status === 'review', 'bg-success' : task.assigned.status === 'completed','bg-error' : parseFloat(task.deadline) < 0}" >
+                            <div class="card-body" style="padding: 0.5rem;">
+                                <h5 class="card-title d-flex justify-content-between"><span class="col-9 p-0">{{task.taskName}}</span><span class="col-1 p-0" style="cursor: pointer;justify-content:end;" ><i class="fa fa-eye" v-on:click="viewTask(index)" data-toggle="tooltip" data-placement="left" title="View task"></i></span></h5>
+                                <h6 class="card-subtitle mb-2 text-muted">Status : {{task.assigned.status}} <span v-if="task.assigned.status !== 'completed' && parseFloat(task.deadline) > 0"> || Deadline : {{Math.round(parseFloat(task.deadline))}} {{Math.round(parseFloat(task.deadline)) > 1?"days" : "day" }}</span><br>Assigned To : {{task.assigned.worker_id === "NA" ? "NA" : workerMap[task.assigned.worker_id]}}</h6>
+                                <p class="card-text small">
+                                    {{task.taskDescription}}
+                                </p>
+                                <a href="#" class="card-link font-weight-bold text-secondary" v-on:click="openNewTaskModal('edit',index)">Edit</a>
+                                <a href="#" class="card-link font-weight-bold text-primary" v-on:click="openAssignModal(index)">Assign</a>
+                                <a href="#" class="card-link font-weight-bold text-danger" v-on:click="openDeleteModal(index)">Delete</a>
+                                <a href="#" class="card-link font-weight-bold text-success" v-on:click="openCompleteModal(index)">Complete</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="row justify-content-center" v-if="filteredTasks.length == 0" style="width:100%">
+                        <span class="h2 text-center my-2">No tasks to show</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="assets/js/json2csv@4.2.js"></script>
+    <script src="assets/js/socket.io.min.js"></script>
+    <script src="assets/js/md5.js"></script>
+    <script src="assets/js/vue@2.js"></script>
+    <script src="assets/js/vuejspaginate.js"></script>
+    <script src="assets/js/moment.min.js"></script>
+    <script src="assets/js/jquery-3.6.0.js"></script>
+    <script src="assets/js/popper.min.js"></script>
+    <script src="assets/js/bootstrap.bundle.js"></script>
+    <script src="assets/js/bootstrap-select.min.js"></script>
+    <script src="assets/js/daterangepicker.js"></script>
+    <script src="assets/js/bootstrap-vue.min.js"></script>
+    <script src="assets/js/csvtojson.min.js"></script>
+    <script src="assets/js/bundle.js"></script>
+    <script>
+        const urlPrefix = window.location.protocol+'//'+window.location.hostname+(window.location.port ? ':'+window.location.port: '');
+        const socketUrl = "http://localhost:3001"
+        const secureRouteUrl = urlPrefix+"/api"
+        const unSecureUrl = urlPrefix
+        Vue.component('vue-paginate', VuejsPaginate)
+        var socket = io(socketUrl)
+        $(document).ready(function() {
+            $("body").tooltip({ selector: '[data-toggle=tooltip]' });
+        });
+        var GlobalStart = null
+        var GlobalEnd = null
+        const secondaryDomain = "tcs.com"
+        const domain = "its.jnj.com"
+        const jsonValidator = window.validator
+        jsonValidator.customFormats.myFormat = function(input) {
+            return input === 'myFormat';
+        };
+        jsonValidator.customFormats.tcs = function(input) {
+            return input.split('@')[1] === "tcs.com" || input === 'NA';
+        };
+        jsonValidator.customFormats.jnj = function(input) {
+            return input.split('@')[1] === "its.jnj.com" || input === 'NA';
+        };
+        jsonValidator.customFormats.type = function(input) {
+            return input === 'worker' || input === 'admin';
+        };
+        const tcsSchema = {
+            id : "/tcs",
+            "type" : "string",
+            "format" : "tcs"
+        }
+        const jnjSchema = {
+            id : "/jnj",
+            "type" : "string",
+            "format" : "jnj",
+        }
+        const typeSchema = {
+            id : "/type",
+            "type" : "string",
+            "format" : "type"
+        }
+        jsonValidator.addSchema(tcsSchema,"/tcs")
+        jsonValidator.addSchema(jnjSchema,"/jnj")
+        jsonValidator.addSchema(typeSchema,"/type")
+        
+        var app = new Vue({
+            el : "#app",
+            data : ()=>{
+                return {
+                    token : "",
+                    loading : false,
+                    user : {},
+                    updatedUser : {},
+                    apiUrl : secureRouteUrl,
+                    unsecureApiUrl : unSecureUrl,
+                    changePassword : {
+                        current : "",
+                        new : "",
+                        newRepeat : ""
+                    },
+                    taskPage : {
+                        currentPage : 1,
+                        itemsPerPage : 9,
+                        pageOptions : [6,10,15,20],
+                        pageRange : 2,
+                        nextText : "Next",
+                        previousText : "Previous",
+                        firstLast : true,
+                        firstText : "First",
+                        lastText : "Last"
+                    },
+                    taskSummary :{
+                        created : 0,
+                        assigned : 0,
+                        started : 0,
+                        inReview : 0,
+                        completed : 0,
+                        createdNotAssigned : 0,
+                        assignedNotStarted : 0,
+                        startedNotReview : 0,
+                        reviewedNotCompleted : 0,
+                        pastDeadline : 0
+                    },
+                    currentTask : {
+                        taskName : "",
+                        taskDescription : "",
+                        createdBy : "",
+                        storyPoints : 2,
+                        assigned : {
+                            "worker_id" : "",
+                            "status" : "",
+                            completeComment : null,
+                        },
+                        tat : "",
+                    },
+                    bulkUploadModalConfig : {
+                        templateType : "",
+                        importType : "",
+                        selectedFile : null,
+                        uploadFlag : false,
+                        dataFlag : false,
+                        loading : false,
+                        allowedExtensions : ["xls","xlsx","odf","csv"],
+                        fileName : "",
+                        userHeaders : [
+                            {"label" : "Employee ID","value" : "empID","default" : "NA"},
+                            {"label" : "WWID","value" : "wwID","default" : "NA"},
+                            {"label" : "Full Name","value" : "fullName","default" : "NA"},
+                            {"label" : "Username","value" : "username","default" : "NA"},
+                            {"label" : "TCS Email","value" : "tcs_email","default" : "NA"},
+                            {"label" : "Tower","value" : "tower","default" : "NA"},
+                            {"label" : "Domain","value" : "domain","default" : "NA"},
+                            {"label" : "Designation","value" : "role","default" : "NA"},
+                            {"label" : "Role","value" : "userType","default" : "NA"},
+                        ],
+                        taskHeaders : [
+                            {"label" : "Task Name","value" : "taskName","default" : "NA"},
+                            {"label" : "Task Description","value" : "taskDescription","default" : "NA"},
+                            {"label" : "Created By","value" : "createdBy","default" : "NA"},
+                            {"label" : "Creation Date","value" : "creationDate","default" : "NA"},
+                            {"label" : "Last Edit Date","value" : "lastEditDate","default" : "NA"},
+                            {"label" : "Last Edited By","value" : "lastEditedBy","default" : "NA"},
+                            {"label" : "Assigned To","value" : "assignedTo","default" : "NA"},
+                            {"label" : "Current Status","value" : "status","default" : "NA"},
+                            {"label" : "Assignment Date","value" : "assignmentDate","default" : "NA"},
+                            {"label" : "Start Date","value" : "startDate","default" : "NA"},
+                            {"label" : "Last Review Date","value" : "reviewDate","default" : "NA"},
+                            {"label" : "Last Review Comment","value" : "reviewComment","default" : "NA"},
+                            //{"label" : "Last Review Screenshot URL","value" : "reviewImageUrl","default" : "NA"},
+                            {"label" : "Re-open Date","value" : "revisionDate","default" : "NA"},
+                            {"label" : "Re-open comment","value" : "revisionComment","default" : "NA"},
+                            {"label" : "Completion Date","value" : "completeDate","default" : "NA"},
+                            {"label" : "Completion Comment","value" : "completeComment","default" : "NA"},
+                            {"label" : "Expected Effort(in story points)","value" : "storyPoints","default" : "NA"},
+                        ],
+                        processedData : [],
+                        perPage : 5,
+                        currentPage : 1,
+                        fields : [],
+                        tables : {
+                            userFields : [{ key: 'empID', label: 'Emp. ID', thClass : "bg-dark text-light"},
+                                { key: 'wwID', label: 'WWID', thClass : "bg-dark text-light"},
+                                { key: 'fullName', label: 'Full Name', thClass : "bg-dark text-light"},
+                                { key: 'username', label: 'Username', thClass : "bg-dark text-light"},
+                                { key: 'tcs_email', label: 'TCS Email', thClass : "bg-dark text-light"},
+                                { key: 'tower', label: 'Tower', thClass : "bg-dark text-light"},
+                                { key: 'domain', label: 'Domain', thClass : "bg-dark text-light"},
+                                { key: 'role', label: 'Designation', thClass : "bg-dark text-light"},
+                                { key: 'userType', label: 'Role', thClass : "bg-dark text-light"},
+                            ],
+                            taskFields : [
+                                {"label" : "Task Name","key" : "taskName",thClass : "bg-dark text-light"},
+                                {"label" : "Task Description","key" : "taskDescription",thClass : "bg-dark text-light"},
+                                {"label" : "Created By","key" : "createdBy",thClass : "bg-dark text-light"},
+                                {"label" : "Creation Date","key" : "creationDate",thClass : "bg-dark text-light"},
+                                {"label" : "Last Edit Date","key" : "lastEditDate",thClass : "bg-dark text-light"},
+                                {"label" : "Last Edited By","key" : "lastEditedBy",thClass : "bg-dark text-light"},
+                                {"label" : "Assigned To","key" : "assignedTo",thClass : "bg-dark text-light"},
+                                {"label" : "Current Status","key" : "status",thClass : "bg-dark text-light"},
+                                {"label" : "Assignment Date","key" : "assignmentDate",thClass : "bg-dark text-light"},
+                                {"label" : "Start Date","key" : "startDate",thClass : "bg-dark text-light"},
+                                {"label" : "Last Review Date","key" : "reviewDate",thClass : "bg-dark text-light"},
+                                {"label" : "Last Review Comment","key" : "reviewComment",thClass : "bg-dark text-light"},
+                                {"label" : "Review Screenshot","key" : "reviewImageUrl",thClass : "bg-dark text-light" ,tdClass : "large"},
+                                {"label" : "Re-open Date","key" : "revisionDate",thClass : "bg-dark text-light"},
+                                {"label" : "Re-open comment","key" : "revisionComment",thClass : "bg-dark text-light"},
+                                {"label" : "Completion Date","key" : "completeDate",thClass : "bg-dark text-light"},
+                                {"label" : "Completion Comment","key" : "completeComment",thClass : "bg-dark text-light"},
+                                {"label" : "Expected Effort(in story points)","key" : "storyPoints",thClass : "bg-dark text-light"},
+                                //{"label" : "Turnaround Time","key" : "turnAraoundTime",thClass : "bg-dark text-light"},
+                            ]
+                        },
+                        userParser : {
+                            "empID" : "number",
+                            "wwID" : "number",
+                            "fullName" : "string",
+                            "tower" : "string",
+                            "role" : "string",
+                            "userType" : function(item){
+                                return item === "Manager"?"admin":item === "Associate"?"worker":""
+                            },
+                            "username" : "string",
+                            "tcs_email" : "string",
+                            "domain" : "string"
+                        },
+                        taskParser : {
+                            "taskName": "string",
+                            "taskDescription": "string",
+                            "createdBy": "string",
+                            "creationDate":function(item)
+                                        { 
+                                            if(item === '' || item === 'NULL' || item === 'NA')
+                                                return 'NA' 
+                                            else 
+                                                return moment(item,'MMMM DD YYYY').toDate()
+                                        },
+                            "lastEditDate":function(item)
+                                        { 
+                                            if(item === '' || item === 'NULL'|| item === 'NA')
+                                                return 'NA' 
+                                            else 
+                                                return moment(item,'MMMM DD YYYY').toDate()
+                                        },
+                            "lastEditedBy": "string",
+                            "assignedTo": "string",
+                            "status": "string",
+                            "assignmentDate":function(item)
+                                        { 
+                                            if(item === '' || item === 'NULL' || item === 'NA')
+                                                return 'NA' 
+                                            else 
+                                                return moment(item,'MMMM DD YYYY').toDate()
+                                        },
+                            "startDate": function(item)
+                                        { 
+                                            if(item === '' || item === 'NULL' || item === 'NA')
+                                                return 'NA' 
+                                            else 
+                                                return moment(item,'MMMM DD YYYY').toDate()
+                                        },
+                            "reviewDate": function(item)
+                                          { 
+                                              if(item === '' || item === 'NULL' || item === 'NA')
+                                                  return 'NA' 
+                                              else 
+                                                  return moment(item,'MMMM DD YYYY').toDate()
+                                          },
+                            "reviewComment": "string",
+                            /*"reviewImageUrl": function(item){
+                                if(item === '' || item === 'NULL' || item === 'NA')
+                                return '' 
+                            else 
+                                return item
+                            },*/
+                            "revisionDate": function(item)
+                                            { 
+                                                if(item === '' || item === 'NULL' || item === 'NA')
+                                                    return 'NA' 
+                                                else 
+                                                    return moment(item,'MMMM DD YYYY').toDate()
+                                            },
+                            "revisionComment": "string",
+                            "completeDate": function(item)
+                                            { 
+                                                if(item === '' || item === 'NULL' || item === 'NA')
+                                                    return 'NA' 
+                                                else 
+                                                    return moment(item,'MMMM DD YYYY').toDate()
+                                            },
+                            "completeComment": "string",
+                            "storyPoints": "number",
+                            /*"turnAroundTime": function(item){
+                                if(item === 'NA')
+                                    return ''
+                                else if(item.includes('day'))
+                                    return parseInt(item.replace(' day',''))
+                                else if(item.includes('days'))
+                                    return parseInt(item.replace(' days',''))
+                            }*/
+                        },
+                        userSchema : {
+                            "type" : "object",
+                            "properties" : {
+                                "empID" : {"type" : "number"},
+                                "wwID" : {"type" : "number"},
+                                "fullName" : {"type" : "string"},
+                                "username" : {"$ref" : "/jnj"},
+                                "tcs_email" : {"$ref" : "/tcs"},
+                                "domain" : {"type" : "string"},
+                                "role" : {"type" : "string"},
+                                "tower" : {"type" : "string"},
+                                "userType" : {"$ref" : "/type"}
+                            },
+                            required : ["username","role"]
+                        },
+                        taskSchema : {
+                            type : "object",
+                            properties : {
+                                "taskName" : {"type" : "string"},
+                                "taskDescription" : {"type" : "string"},
+                                "createdBy" : {$ref : "/jnj"},
+                                "creationDate" : {"type" : "date"},
+                                "lastEditDate" : {"type" : ["date","string"]},
+                                "lastEditedBy" : {$ref : "/jnj"},
+                                "assignedTo" : {$ref : "/jnj"},
+                                "status" : {"type" : "string"},
+                                "assignmentDate ": {"type" : ["date","string"]},
+                                "startDate" : {"type" : ["date","string"]},
+                                "reviewDate" : {"type" : ["date","string"]},
+                                "reviewComment" : {"type" : "string"},
+                                //"reviewImageUrl" : {"type" : "string"},
+                                "revisionDate" : {"type" : ["date","string"]},
+                                "revisionComment" : {"type" : "string"},
+                                "completeDate" : {"type" : ["date","string"]},
+                                "completeComment" : {"type" : "string"},
+                                "storyPoints" : {"type" : ["number","string"]},
+                                //"turnAroundTime" : {"type" : "number"}
+                            },
+                            required : ["taskName","taskDescription","createdBy","creationDate","assignedTo","status"]
+                        }
+                    },
+                    exportModalConfig : {
+                        userHeaders : [
+                            {"label" : "Employee ID","value" : "empID","default" : "NA"},
+                            {"label" : "WWID","value" : "wwID","default" : "NA"},
+                            {"label" : "Full Name","value" : "fullName","default" : "NA"},
+                            {"label" : "Username","value" : "username","default" : "NA"},
+                            {"label" : "TCS Email","value" : "tcs_email","default" : "NA"},
+                            {"label" : "Tower","value" : "tower","default" : "NA"},
+                            {"label" : "Domain","value" : "domain","default" : "NA"},
+                            {"label" : "Designation","value" : "role","default" : "NA"},
+                            {"label" : "Role","value" : "userType","default" : "NA"},
+                        ],
+                        taskHeaders : [
+                            {"label" : "Task Name","value" : "taskName","default" : "NA"},
+                            {"label" : "Task Description","value" : "taskDescription","default" : "NA"},
+                            {"label" : "Created By","value" : "createdBy","default" : "NA"},
+                            {"label" : "Creation Date","value" : "creationDate","default" : "NA"},
+                            {"label" : "Last Edit Date","value" : "lastEditDate","default" : "NA"},
+                            {"label" : "Last Edited By","value" : "lastEditedBy","default" : "NA"},
+                            {"label" : "Assigned To","value" : "assignedTo","default" : "NA"},
+                            {"label" : "Current Status","value" : "status","default" : "NA"},
+                            {"label" : "Assignment Date","value" : "assignmentDate","default" : "NA"},
+                            {"label" : "Start Date","value" : "startDate","default" : "NA"},
+                            {"label" : "Last Review Date","value" : "reviewDate","default" : "NA"},
+                            {"label" : "Last Review Comment","value" : "reviewComment","default" : "NA"},
+                            {"label" : "Last Review Screenshot URL","value" : "reviewImageUrl","default" : "NA"},
+                            {"label" : "Re-open Date","value" : "revisionDate","default" : "NA"},
+                            {"label" : "Re-open comment","value" : "revisionComment","default" : "NA"},
+                            {"label" : "Completion Date","value" : "completeDate","default" : "NA"},
+                            {"label" : "Completion Comment","value" : "completeComment","default" : "NA"},
+                            {"label" : "Expected Effort(in Story Points)","value" : "storyPoints","default" : "NA"},
+                            {"label" : "Turnaround Time","value" : "tat","default" : "NA"},
+                            {"label" : "Deadline Status","value" : "deadline","default" : "NA"}
+                        ],
+                    },
+                    searchUser:{
+                        username : "",
+                        empID : "",
+                        name : "",
+                        role : "",
+                    },
+                    taskModalConfig : {
+                        header : "Create New Task",
+                        save : "Save Task",
+                        usage : "save",
+                        addMore : false
+                    },
+                    taskFilter : {
+                        name : "",
+                        assignedTo : "",
+                        status : "",
+                        date : {
+                            type : "creationDate",
+                            range : {
+                                start : "",
+                                end : ""
+                            },//moment().format('MMMM D, YYYY') + ' - ' + moment().add(1).format('MMMM D, YYYY'),
+                        },
+                        sort : {
+                            column : "creationDate",
+                            mode : "asc",
+                        }
+                    },
+                    notifications : {
+                        currentNotificationCount : 0,
+                        newNotification : false,
+                        lastNotificationEntry : "all",
+                        dropdown : [],
+                        countInDropdown : 3,
+                        tab : []
+                    },
+                    viewModalConfig : {
+                        "brief" : true,
+                        "detailed" : false,
+                        "loading" : true,
+                        "fields" : [
+                            { key: 'title', label: 'Action', thClass : "bg-dark text-light"},
+                            { key: 'from', label: 'Done By', thClass : "bg-dark text-light"},
+                            { key: 'creationDate', label: 'Date', thClass : "bg-dark text-light"},
+                        ],
+                        "history" : [],
+                        "perPage": 5,
+                        "currentPage" : 1,
+                    },
+                    userTable : {
+                        perPage : 5,
+                        currentPage : 1,
+                        fields : [
+                            { key: 'empID', label: 'Emp. ID', thClass : "bg-dark text-light"},
+                            { key: 'wwID', label: 'WWID', thClass : "bg-dark text-light"},
+                            { key: 'fullName', label: 'Full Name', thClass : "bg-dark text-light"},
+                            { key: 'username', label: 'Username', thClass : "bg-dark text-light"},
+                            { key: 'tcs_email', label: 'TCS Email', thClass : "bg-dark text-light"},
+                            { key: 'tower', label: 'Tower', thClass : "bg-dark text-light"},
+                            { key: 'domain', label: 'Domain', thClass : "bg-dark text-light"},
+                            { key: 'role', label: 'Designation', thClass : "bg-dark text-light"},
+                            { key: 'userType', label: 'Role', thClass : "bg-dark text-light"},
+                        ]
+                    },
+                    filteredTasks : [],
+                    tasks : [],
+                    workerMap : {},
+                    workers : [],
+                    userMap : {},
+                    filteredUsers : [],
+                    users : [],
+                    redoImage : null,
+                    userCount : 0,
+                }
+            },
+            created : async function(){
+                try{
+                    this.loading = true
+                    var loggedIn = localStorage.getItem("loggedIn")
+                    var role = localStorage.getItem("role")
+                    if(loggedIn === "true" && role !== "admin"){
+                        localStorage.clear()
+                        window.location.href="index.html"
+                        return
+                    }
+                    await Promise.all([this.getProfile(),this.getTasks(),this.getNotifications(),await this.getUsers()])
+                    this.filterTasks()
+                    this.filterUsers()
+                    socket.on('connect',(()=>{
+                        //console.log('Connected to server')
+                        this.userCount+=1
+                        //console.log(socket.id)
+                    }).bind(this))
+                    socket.on('broadcast',async (data)=>{
+                        //console.log('received')
+                        if(data["role"] === "admin" || data["role"] === 'all'){
+                            this.notifications.newNotification = true
+                            this.notifications.currentNotificationCount +=1
+                            await this.getNotifications()
+                            await this.getTasks()
+                            this.filterTasks()
+                            //console.log(this.tasks)
+                            this.$forceUpdate()
+                        }
+                    })
+                    this.loading = false
+                    $('#reportrange').daterangepicker({
+                            ranges: {
+                               'Today': [moment(), moment()],
+                               'Yesterday': [moment().subtract(1, 'days'), moment().subtract(1, 'days')],
+                               'Last 7 Days': [moment().subtract(6, 'days'), moment()],
+                               'Last 30 Days': [moment().subtract(29, 'days'), moment()],
+                               'This Month': [moment().startOf('month'), moment().endOf('month')],
+                               'Last Month': [moment().subtract(1, 'month').startOf('month'), moment().subtract(1, 'month').endOf('month')]
+                            }
+                        },(function(start,end,label){
+                            //console.log(start,end,label)
+                            this.taskFilter.date.range.start = start
+                            this.taskFilter.date.range.end = end
+                            //console.log(`${start.format("MMMM DD YYYY")} - ${end.format("MMMM DD YYYY")}`)
+                            $('#rangevalue').val(`${start.format("MMMM DD YYYY")} - ${end.format("MMMM DD YYYY")}`)
+                    }).bind(this));
+                }
+                catch(err){
+                    this.loading = false
+                    localStorage.clear()
+                    console.log(err)
+                    alert(err)
+                    window.location.href="/"
+                }
+            },
+            computed : {
+                displayedTasks : function(){
+                    const startIndex = this.taskPage.itemsPerPage * (this.taskPage.currentPage - 1);
+                    const endIndex = startIndex + this.taskPage.itemsPerPage
+                    return this.filteredTasks.slice(startIndex,endIndex)
+                },
+                noOfPages : function(){
+                    //console.log(this.taskPage.itemsPerPage)
+                    return Math.ceil(this.filteredTasks.length / this.taskPage.itemsPerPage);
+                },
+                tasksRows : function(){
+                    return this.filteredTasks.length
+                },
+                rows : function(){
+                    return this.filteredUsers.length
+                },
+                historyRows : function(){
+                    return this.viewModalConfig.history.length
+                },
+                uploadRows : function(){
+                    return this.bulkUploadModalConfig.processedData.length
+                }
+            },
+            methods :{
+                //Utility Functions'
+                checkFalsy(val){
+                    if(val === null || val === undefined || val === '' || val === false)
+                        return true
+                    else
+                        return false
+                },
+                formatNames(index){
+                    console.log(this.checkFalsy(this.bulkUploadModalConfig.processedData[index].fileToBeUploaded) === false? this.bulkUploadModalConfig.processedData[index].fileToBeUploaded.name : '')
+                    return this.checkFalsy(this.bulkUploadModalConfig.processedData[index].fileToBeUploaded) === false? this.bulkUploadModalConfig.processedData[index].fileToBeUploaded.name : ''
+                },
+                clickCallback(page){
+                    this.taskPage.currentPage = page
+                },
+                test(){
+                    console.log('Hi')
+                },
+                generateRequestBody(details){
+                    var formBody = [];
+                    for (var property in details) {
+                    var encodedKey = encodeURIComponent(property);
+                    var encodedValue = encodeURIComponent(details[property]);
+                    formBody.push(encodedKey + "=" + encodedValue);
+                    }
+                    formBody = formBody.join("&");
+                    return formBody
+                },
+                toTitleCase(str = "") {
+                    return str.replace(
+                      /\w\S*/g,
+                      function(txt) {
+                        return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();
+                      }
+                    );
+                },
+                show(id){
+                    const button = document.getElementById(id)
+                    const input = document.getElementById(`${id}passwordinput`)
+                    if(button.innerText === "Show"){
+                        button.innerText = "Hide"
+                        input.type = "text"
+                    }
+                    else if(button.innerText === "Hide"){
+                        button.innerText = "Show"
+                        input.type = "password"
+                    }
+                    else{
+                        alert("Some kind of error has occured")
+                        return
+                    }
+                },
+                setImage(){
+                    const image = document.getElementById('customFile')
+                    const label = document.getElementById('filelabel')
+                    if(image.files.length === 0){
+                        this.generateAlert('review',"A screenshot must be uploaded","warning")
+                        return
+                    }
+                    label.innerText = image.files[0].name
+                    this.redoImage = image.files[0]
+                    //console.log(this.redoImage)
+                    var reader = new FileReader();
+                    reader.onload = function(e) {
+                        $('#preview').attr('src', e.target.result);
+                    }
+                    reader.readAsDataURL(this.redoImage)
+                },
+                openNewTaskModal(mode,index){
+                    if(mode === 'save'){
+                        this.taskModalConfig.header = "Create New Task"
+                        this.taskModalConfig.save = "Save task"
+                        this.taskModalConfig.usage = "save"
+                        this.currentTask = JSON.parse(JSON.stringify({taskName : "",taskDescription : "",createdBy : "",assigned : {"worker_id" : "","status" : "",}}))
+                    }
+                    else if(mode === 'edit'){
+                        this.taskModalConfig.header = "Edit Task"
+                        this.taskModalConfig.save = "Update task"
+                        this.taskModalConfig.usage = "edit"
+                        this.currentTask = JSON.parse(JSON.stringify(this.filteredTasks[index]))
+                        if(parseFloat(this.currentTask.deadline) < 0){
+                            alert("Deadline for this task has passed")
+                            return
+                        }
+                    }
+                    else if(mode === 'view'){
+                        this.taskModalConfig.header = "View"
+                        this.taskModalConfig.save = "save task"
+                        this.taskModalConfig.usage = "view"
+                        this.currentTask = JSON.parse(JSON.stringify(this.filteredTasks[index]))
+                    }
+                    $('#taskmodal').modal('show')
+                },
+                closeAlert(name){
+                    const item = document.getElementById(`${name}alert`)
+                    item.style.display = "none"
+                },
+                closeTaskModal(){
+                    this.closeAlert('task')
+                    $('#taskmodal').modal('hide')
+                },
+                openUpdateModal(){
+                    this.updatedUser = JSON.parse(JSON.stringify(this.user))
+                    $("#updatemodal").modal('show')
+                },
+                closeUpdateModal(){
+                    this.closeAlert('update')
+                    $("#updatemodal").modal('hide')
+                },
+                reset(){
+                    this.filteredTasks = this.tasks
+                    this.taskFilter = JSON.parse(JSON.stringify({"name" : "","assignedTo" : "","status" : "","sort" : {"column" : "", "mode" : ""},"date" : {"type" : "creationDate","range" : {"start" : "","end" : ""}}}))
+                },
+                addMore(e){
+                    if(e.target.checked){
+                        this.taskModalConfig.addMore = true
+                    }
+                    else{
+                        this.taskModalConfig.addMore = false
+                    }
+                },
+                openBulkUploadModal(){
+                    this.closeAlert('bulk')
+                    $('#bulkuploadmodal').modal('show')
+                },
+                closeBulkUploadModal(){
+                    this.bulkUploadModalConfig['importType'] = ""
+                    this.bulkUploadModalConfig["fileName"] = ""
+                    this.bulkUploadModalConfig["processedData"] = []
+                    this.bulkUploadModalConfig.dataFlag = false
+                    this.bulkUploadModalConfig.loading = false
+                    const item = document.getElementById('fileinput')
+                    console.log(item.files)
+                    item.value = ""
+                    $('#bulkuploadmodal').modal('hide')
+                },
+                openChangePasswordModal(){
+                    this.changePassword = JSON.parse(JSON.stringify({current : "",new : "",newRepeat : ""}))
+                    $('#passwordmodal').modal('show')
+                },
+                openSortModal(){
+                    //this.taskFilter.sortColumn = ""
+                    $('#sortmodal').modal('show')
+                },
+                closeSortModal(){
+                    //this.taskFilter.sortColumn = ""
+                    $('#sortmodal').modal('hide')
+                },
+                closeChangePasswordModal(){
+                    this.closeAlert('password')
+                    $('#passwordmodal').modal('hide')
+                },
+                openAssignModal(index){
+                    this.currentTask = JSON.parse(JSON.stringify(this.filteredTasks[index]))
+                    //console.log(this.currentTask)
+                    if(parseFloat(this.currentTask.deadline) < 0){
+                        alert("Deadline for this task has passed")
+                        return
+                    }
+                    if(this.currentTask.assigned.status !== "created"){
+                        alert('This task cannot be assigned')
+                        return
+                    }
+                    $('#assignmodal').modal('show')
+                },
+                closeAssignModal(){
+                    this.closeAlert('assign')
+                    $('#assignmodal').modal('hide')
+                },
+                openCompleteModal(index){
+                    this.currentTask = JSON.parse(JSON.stringify(this.filteredTasks[index]))
+                    if(parseFloat(this.currentTask.deadline) < 0){
+                        alert("Deadline for this task has passed")
+                        return
+                    }
+                    $('#completemodal').modal('show')
+                },
+                closeCompleteModal(){
+                    $('#completemodal').modal('hide')
+                    //this.closeAlert('complete')
+                },
+                openDeleteModal(index){
+                    this.currentTask = JSON.parse(JSON.stringify(this.filteredTasks[index]))
+                    $('#deletemodal').modal('show')
+                },
+                closeDeleteModal(){
+                    $('#deletemodal').modal('hide')
+                },
+                openNotificationsModal(){
+                    $('#notificationmodal').modal('show')
+                },
+                closeNotificationModal(){
+                    $('#notificationmodal').modal('hide')
+                },
+                openSearchUserModal(){
+                    this.searchUser = JSON.parse(JSON.stringify({username : "",empID : "",name : "",role : "",})) 
+                    $('#searchusermodal').modal('show')
+                },
+                closeSearchUserModal(){
+                    $('#searchusermodal').modal('hide')
+                },
+                openAdvancedFilters(){
+                    $('#advancedfiltermodal').modal('show')
+                },
+                closeAdvancedFilters(){
+                    $('#advancedfiltermodal').modal('hide')
+                },
+                openInfoModal(){
+                    $("#infomodal").modal('show')
+                },
+                closeInfoModal(){
+                    $("#infomodal").modal('hide')
+                },
+                validateEmail(email) {
+                    const re = /^(([^<>()[\]\\.,;:\s@"]+(\.[^<>()[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
+                    return re.test(String(email).toLowerCase());
+                },
+                filterTasks(){
+                    this.filteredTasks.splice(0)
+                    var count = 0
+                    this.tasks.forEach(e => {
+                        //console.log(count)
+                        count+=1
+                        if(this.taskFilter.name != "" && e.taskName.toLowerCase().includes(this.taskFilter.name.toLowerCase()) == false){
+
+                        }
+                        else if(this.taskFilter.status !== "" && e.assigned.status !== this.taskFilter.status){
+
+                        }
+                        else if(this.taskFilter.assignedTo !== "" && this.taskFilter.assignedTo !== e.assigned.worker_id){
+                            
+                        }
+                        else{
+                            this.filteredTasks.push(e)
+                        }
+                    })
+                    //console.log(this.filteredTasks)
+                    var temp = this.filteredTasks
+                    var type = this.taskFilter.date.type
+                    var start = this.taskFilter.date.range.start === ""? new Date(0): this.taskFilter.date.range.start
+                    var end = this.taskFilter.date.range.end === ""? new Date(): this.taskFilter.date.range.end
+                    //console.log(start,end)
+                    if(type === "creationDate" || type === "lastEditDate")
+                    {
+                        temp.map(e => {
+                            e[type] = e[type] === undefined ? null : new Date(e[type])
+                        })
+                    }
+                    else{
+                        temp.map(e => {
+                            e[type] = e.assigned[type] === undefined ? null : new Date(e.assigned[type])
+                        })
+                    }
+                    var filterTemp = temp.filter(e => {
+                        //console.log(e[type] >= start && e[type] <= end)
+                        return e[type] >= start && e[type] <= end
+                    })
+                    //console.log(filterTemp)
+                    this.filteredTasks = filterTemp
+                    //console.log(this.filteredTasks)
+                },
+                resetDate(){
+                    this.filteredTasks = this.tasks
+                    this.taskFilter = JSON.parse(JSON.stringify({"name" : "","assignedTo" : "","status" : "","sort" : {"column" : "", "mode" : ""},"date" : {"type" : "creationDate","range" : {"start" : "","end" : ""}}}))
+                    const doc = document.getElementById('rangevalue')
+                    doc.value = ""
+                },
+                filterUsers(){
+                    //console.log(this.searchUser)
+                    this.filteredUsers.splice(0) 
+                    this.users.forEach(e => {
+                        if(this.searchUser.name != "" && e.fullName.toLowerCase().includes(this.searchUser.name.toLowerCase()) == false){
+                            //console.log('name not match')
+                        }
+                        else if(this.searchUser.empID !== "" && e.empID.includes(this.searchUser.empID.toString()) == false){
+                            //console.log('empID not match')
+                        }
+                        else if(this.searchUser.username !== "" && e.username.toLowerCase().includes(this.searchUser.username.toLowerCase()) == false){
+                            //console.log('username not match')
+                        }
+                        else{
+                            this.filteredUsers.push(e)
+                        }
+                    })
+                },
+                resetSort(){
+                    this.taskFilter.sort.column = ""
+                    this.taskFilter.sort.mode = ""
+                    this.filterTasks()
+                },
+                resetSearch(){
+                    this.searchUser = JSON.parse(JSON.stringify({username : "",empID : "",name : "",role : "",}))
+                    this.filteredUsers = this.users
+                },
+                sortTask(){
+                    try{
+                        const col = this.taskFilter.sort.column
+                        const mode = this.taskFilter.sort.mode
+                        //console.log(col,mode)
+                        //console.log(this.filteredTasks)
+                        var temp = this.filteredTasks
+                        if(col === "creationDate" || col === "lastEditDate")
+                        {
+                            temp.map(e => {
+                                e[col] = e[col] === undefined ? null : new Date(e[col])
+                            })
+                        }
+                        else{
+                            temp.map(e => {
+                                e[col] = e.assigned[col] === undefined ? null : new Date(e.assigned[col])
+                            })
+                        }
+                        
+                        if(mode == 'asc'){
+                            //console.log('ascending')
+                            temp.sort((a,b)=> a[col] - b[col])
+                        }
+                        else if(mode == 'desc'){
+                            //console.log('descending')
+                            temp.sort((a,b)=> b[col] - a[col])
+                        }
+                        //for()
+                    }
+                    catch(err){
+                        console.log(err)
+                        alert('There has been some kind of error')
+                    }
+                },
+                dateDiff(date2,date1){
+                    const diffTime = Math.abs(new Date(date2) - new Date(date1));
+                    //console.log(date2,date1,diffTime)
+                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+                    //console.log(diffTime + " milliseconds");
+                    return diffDays === NaN? "NA" : diffDays;
+                },
+                openViewModal(){
+                    this.viewModalConfig.brief = true
+                    this.viewModalConfig.detailed = false
+                    $('#viewmodal').modal('show')
+                },
+                closeViewModal(){
+                    $('#viewmodal').modal('hide')
+                },
+                viewFromNotification(id){
+                    var idx = this.tasks.map(e => {return e._id}).indexOf(id)
+                    this.viewTask(idx)
+                },
+                viewTask(id){
+                    this.currentTask = this.filteredTasks[id]
+                    //console.log(this.currentTask)
+                    var diff = this.dateDiff(this.currentTask.assigned.completeDate,this.currentTask.assigned.assignmentDate)
+                    var suffix = ""
+                    if(isNaN(diff) === false)
+                    {
+                        if( diff > 1)
+                            suffix = "days"
+                        else
+                            suffix = "day"
+                    }
+                    else{
+                        suffix = ""
+                        diff = "NA"
+                    }
+                    if(this.currentTask.assigned.status === 'completed' ){
+                        this.currentTask.tat = diff+" "+suffix
+                    }
+                    else{
+                        this.currentTask.tat = "NA"
+                    }
+                    //console.log(this.currentTask.tat)
+                    this.openViewModal()
+                },
+                openTray(){
+                    this.notifications.currentNotificationCount = 0
+                    this.notifications.newNotification = false
+                },
+                passwordPolicy(str){
+                    return true
+                },
+                showBriefHistory(){
+                    this.viewModalConfig.detailed = false
+                    this.viewModalConfig1111.brief = true
+                },
+                downloadTemplate(type){
+                    console.log(type)
+                    var fields = []
+                    if(type === ""){
+                        this.generateAlert('bulk','Please select template type before downloading','warning')
+                        return
+                    }
+                    if(type === 'users'){
+                        fields = this.bulkUploadModalConfig.userHeaders
+                    }
+                    else if(type === 'tasks'){
+                        fields = this.bulkUploadModalConfig.taskHeaders
+                    }
+                    else{
+                        alert('Some error has occured')
+                        return
+                    }
+
+                    const parser = new json2csv.Parser({fields})
+                    const csv = "data:text/csv;charset=utf-8,"+parser.parse([])
+                    //console.log(csv)
+                    var encodedUri = encodeURI(csv);
+                    var link = document.createElement("a");
+                    link.style.visibility = 'hidden';
+                    link.setAttribute("href", encodedUri);
+                    link.setAttribute("download", "bulk_upload_template_for_"+type+".csv");
+                    document.body.appendChild(link); // Required for FF
+                    link.click();
+                    document.body.removeChild(link);
+                },
+                async uploadData(type){
+                    try{
+                        //console.log(this.bulkUploadModalConfig.processedData)
+                        var images = []
+                        if(this.bulkUploadModalConfig.importType === 'tasks'){
+                            let promises = []
+                            this.bulkUploadModalConfig.processedData.forEach(e =>{
+                                if(e.fileToBeUploaded !== undefined && e.fileToBeUploaded !== null){
+                                    console.log(e.fileToBeUploaded)
+                                    let filePromise = new Promise(resolve => {
+                                        let reader = new FileReader
+                                        reader.readAsDataURL(e.fileToBeUploaded)
+                                        reader.onload = ()=>{resolve({"taskName" : e.taskName,"fileToBeUploaded" : reader.result})}
+                                    })
+                                    promises.push(filePromise)
+                                }
+                            })
+                            images = await Promise.all(promises)
+                            //console.log(images)
+                        }
+                        const type = this.bulkUploadModalConfig.importType
+                        const data = this.bulkUploadModalConfig.processedData
+                        //console.log(data)
+                        this.generateAlert('bulk',"Please wait your data is being uploaded","info")
+                        var resp = await this.fetchData('/bulk',"POST",{"data" :  JSON.stringify({"list" : data,"images" : this.bulkUploadModalConfig.importType === 'tasks'? images : null}),"type" : type})
+                        if(resp === false){
+                            localStorage.clear()
+                            window.location.href="/expired"
+                            return
+                        }
+                        else{
+                            if(resp.message === 'successful' && type === 'users'){
+                                this.generateAlert('bulk',"All users have been successfully registered"+resp.data,"success")
+                                await this.getUsers()
+                            }
+                            else if(resp.message === 'successful' && type === 'tasks'){
+                                this.generateAlert('bulk',resp.data,'success')
+                            }
+                            else{
+                                this.generateAlert('bulk',resp.message,"error")
+                            }
+                        }
+                        //console.log(this.bulkUploadModalConfig.processedData)
+                    }
+                    catch(err){
+                        this.generateAlert('bulk','Some Error has occured','error')
+                        console.log(err)
+                        this.bulkUploadModalConfig.loading = false
+                        this.bulkUploadModalConfig.uploadFlag = false
+                    }
+                },
+                selectFile(type){
+                    this.closeAlert('bulk')
+                    const input = document.getElementById('fileinput')
+                    input.click()
+                },
+                clearUpload(index){
+                    if(this.bulkUploadModalConfig.processedData[index].fileToBeUploaded !== null){
+                        this.bulkUploadModalConfig.processedData[index].fileToBeUploaded = null
+                        document.getElementById('upload'+index.toString()).value = ""
+                    }
+                    else{
+                        alert('No file selected')
+                    }
+                },
+                cancelFile(){
+                    this.bulkUploadModalConfig.fileName = ""
+                    this.bulkUploadModalConfig.processedData = []
+                    this.bulkUploadModalConfig.selectedFile = null
+                    this.bulkUploadModalConfig.fields = []
+                    this.bulkUploadModalConfig.dataFlag = false
+                    this.bulkUploadModalConfig.loading = false
+                    const item = document.getElementById('fileinput')
+                    //console.log(item.files)
+                    item.value = ""
+                },
+                run(e,type){
+                    var fileName  =  "";
+                    this.closeAlert('bulk')
+                    if(type === 'select'){
+                        //console.log(e.target.value)
+                        this.bulkUploadModalConfig.importType = e.target.value
+                    }
+                    else if(type === 'file'){
+                        e.preventDefault()
+                        if(e.target.files.length === 0 && this.bulkUploadModalConfig.selectedFile === null){
+                            this.generateAlert('bulk','You must upload a file','error')
+                            return
+                        }
+                        else{
+                            this.bulkUploadModalConfig.loading = true
+                            this.bulkUploadModalConfig.selectedFile = e.target.files[0]
+                            fileName = this.bulkUploadModalConfig.selectedFile.name
+                            this.bulkUploadModalConfig.fileName = fileName
+                        }
+                    }
+                    else{
+                        alert('Some error has occurred')
+                    }
+             
+                    //console.log(fileName,fileName.substr(fileName.lastIndexOf('.')),this.bulkUploadModalConfig.allowedExtensions,this.bulkUploadModalConfig.allowedExtensions.includes(fileName.substr(fileName.lastIndexOf('.')+1)))
+                    if(this.bulkUploadModalConfig.allowedExtensions.includes(this.bulkUploadModalConfig.fileName.substr(this.bulkUploadModalConfig.fileName.lastIndexOf('.')+1)) === false){
+                        if(type ==='file')
+                            this.generateAlert('bulk','Only data files of type '+this.bulkUploadModalConfig.allowedExtensions.join(', ')+" are allowed. ",'error')
+                        return
+                    }
+                    //console.log('hi ya')
+                    var headers = []
+                    var validationObject = {}
+                    //console.log(this.bulkUploadModalConfig.importType)
+                    if(this.bulkUploadModalConfig.importType === 'users'){
+                        headers = this.bulkUploadModalConfig.userHeaders.map(e => e["value"])
+                        this.bulkUploadModalConfig.fields = this.bulkUploadModalConfig.tables.userFields
+                        validationObject = this.bulkUploadModalConfig.userParser
+                    }
+                    else if(this.bulkUploadModalConfig.importType === 'tasks'){
+                        headers = this.bulkUploadModalConfig.taskHeaders.map(e => e["value"])
+                        this.bulkUploadModalConfig.fields = this.bulkUploadModalConfig.tables.taskFields
+                        validationObject = this.bulkUploadModalConfig.taskParser
+                    }
+                    else{
+                        this.generateAlert("bulk","Please select a proper upload type","error")
+                        return
+                    }
+                    //console.log(this.bulkUploadModalConfig.fields)
+                    var fileReader = new FileReader()
+                    fileReader.onload = (async function(){
+                        //console.log(fileReader.result)
+                        var data = await csv({"output" : "json","noheader" : false,"headers" : headers, colParser : validationObject}).fromString(fileReader.result)
+                        console.log(data)
+                        if(data.length == 0){
+                            this.generateAlert('bulk',"No data to be edited","error")
+                            return
+                        }
+                        //console.log(data)
+                        if(!this.validate(this.bulkUploadModalConfig.importType,data)){
+                            this.bulkUploadModalConfig.loading = false
+                            this.bulkUploadModalConfig.dataFlag = false
+                            return
+                        }
+                        this.bulkUploadModalConfig.processedData = data
+                        //console.log(this.bulkUploadModalConfig.processedData)
+                        this.bulkUploadModalConfig.loading = false
+                        this.bulkUploadModalConfig.dataFlag = true
+                    }).bind(this)
+                    fileReader.readAsText(this.bulkUploadModalConfig.selectedFile)
+                },
+                validate(type,data){
+                    //console.log(type)
+                    var errorFlag = false
+                    var result = null
+                    //console.log(type)
+                    if(data.length == 0){
+                        this.generateAlert('bulk',"No data to be edited","error")
+                        return false
+                    }
+                    var schema = null
+                    if(type === "users"){
+                        schema = this.bulkUploadModalConfig.userSchema
+                    }
+                    else if(type === 'tasks'){
+                        schema = this.bulkUploadModalConfig.taskSchema
+                    }
+                    else{
+                        alert("There has been some kind of error")
+                        this.closeBulkUploadModal()
+                        return
+                    }
+                    //this.jsonValidator.addSchema(schema,"user")
+                    var valid = true
+                    var result = []
+                    //console.log(schema,jsonValidator)
+                    for(var i in data){
+                        var res = jsonValidator.validate(data[i],schema)
+                        if(!res.valid){
+                            valid = res.valid
+                            result = res.errors.map(e => e.message)
+                            break
+                        }
+                    }
+                    //console.log(result,valid)
+                    if(!valid){
+                        this.generateAlert('bulk',`There are errors in the data : ${result.join('\n')}`,"error")
+                        return false
+                    }
+                    else{
+                        //console.log('OK')
+                    }
+                    return true
+                },
+                generateAlert(name,text,type){
+                    const alertElement = document.getElementById(`${name}alert`)
+                    const alertText = document.getElementById(`${name}alerttext`)
+                    alertText.innerText = text
+                    alertElement.classList.remove('alert-warning')
+                    if(type === "warning"){
+                        alertElement.className = "alert alert-dismissible fade show alert-warning"
+                    }
+                    else if(type === "error"){
+                        alertElement.className = "alert alert-dismissible fade show alert-error"
+                    }
+                    else if(type === "success"){
+                        alertElement.className = "alert alert-dismissible fade show alert-success"
+                    }
+                    else if(type === "info"){
+                        alertElement.className = "alert alert-dismissible fade show alert-info"
+                    }
+                    alertText.innerHTML = text
+                    alertElement.style.display="block"
+                },                
+                exportUsersToExcel(){
+                    var data = JSON.parse(JSON.stringify(this.filteredUsers))
+                    const fields = this.exportModalConfig.userHeaders
+                    var temp =[]
+                    data.forEach(e => {
+                        e["userType"] = e["userType"] == "admin" ? "Manager" : "Associate" 
+                    })
+                    const parser = new json2csv.Parser({fields})
+                    const csv = "data:text/csv;charset=utf-8,"+parser.parse(data)
+                    //console.log(csv)
+                    var encodedUri = encodeURI(csv);
+                    var link = document.createElement("a");
+                    link.style.visibility = 'hidden';
+                    link.setAttribute("href", encodedUri);
+                    link.setAttribute("download", "user_list.csv");
+                    document.body.appendChild(link); // Required for FF
+                    link.click();
+                    document.body.removeChild(link);
+                },
+                exportTasksToExcel(){
+                    var data = JSON.parse(JSON.stringify(this.filteredTasks))
+                    var temp =[]
+                    data.forEach(e => {
+                        var diff = this.dateDiff(e.assigned.completeDate,e.assigned.assignmentDate)
+                        //console.log(diff)
+                        var suffix = ""
+                        if(isNaN(diff) === false)
+                        {
+                            if( diff > 1)
+                                suffix = " days"
+                            else
+                                suffix = " day"
+                        }
+                        else{
+                            suffix = ""
+                            diff = "NA"
+                        }
+                        
+                        e['createdBy'] =  this.userMap[e.createdBy]
+                        e['assignedTo'] = this.workerMap[e.assigned['worker_id']]
+                        e['status'] = e.assigned.status
+                        e['lastEditedBy'] =  e.lastEditedBy === undefined?"NA":this.userMap[e.lastEditedBy]
+                        e['creationDate'] = e.creationDate === undefined ?"NA" : moment(new Date(e.creationDate)).format('MMMM DD YYYY')
+                        e['lastEditDate'] = e.lastEditDate === undefined ?"NA" : moment(new Date(e.lastEditDate)).format('MMMM DD YYYY')
+                        e['assignmentDate'] = e.assigned.assignmentDate === undefined ?"NA" : moment(new Date(e.assigned.assignmentDate)).format('MMMM DD YYYY')
+                        e['startDate'] = e.assigned.startDate === undefined ?"NA" : moment(new Date(e.assigned.startDate)).format('MMMM DD YYYY')
+                        e['reviewDate'] = e.assigned.reviewDate === undefined ?"NA" : moment(new Date(e.assigned.reviewDate)).format('MMMM DD YYYY')
+                        e['completeDate'] = e.assigned.completeDate === undefined ?"NA" : moment(new Date(e.assigned.completeDate)).format('MMMM DD YYYY')
+                        e['revisionDate'] = e.assigned.revisionDate === undefined ?"NA" : moment(new Date(e.assigned.revisionDate)).format('MMMM DD YYYY')
+                        e['reviewComment'] = e.assigned.reviewComment === undefined?'NA' : e.assigned.reviewComment
+                        e['revisionComment'] = e.assigned.revisionComment === undefined?'NA' : e.assigned.revisionComment
+                        e['completeComment'] = e.assigned.completeComment === undefined?'NA' : e.assigned.completeComment
+                        e['reviewImageUrl'] = e.assigned.reviewImageUrl === undefined?'NA': e.assigned.reviewImageUrl
+                        e['tat'] = diff+suffix
+                        e['deadline'] = parseFloat(e.deadline) < 0 ? "Within deadline" : "Past deadline" 
+                        let {assigned,...y} = e
+                        temp.push(y)
+                    })
+                    //console.log(temp)
+                    const fields = this.exportModalConfig.taskHeaders
+                    const parser = new json2csv.Parser({fields})
+                    const csv = "data:text/csv;charset=utf-8,"+parser.parse(temp)
+                    //console.log(csv)
+                    var encodedUri = encodeURI(csv);
+                    var link = document.createElement("a");
+                    link.style.visibility = 'hidden';
+                    link.setAttribute("href", encodedUri);
+                    link.setAttribute("download", "task_report.csv");
+                    document.body.appendChild(link); // Required for FF
+                    link.click();
+                    document.body.removeChild(link);
+                },
+                async getProfile(){
+                    try{
+                        const data = await this.fetchData('/profile',"POST")
+                        if(data === false){
+                            localStorage.clear()
+                            window.location.href="/expired"
+                            return
+                        }
+                        else if(data["message"] === 'successful'){
+                            this.user = data["user"]
+                        }
+                        else{
+                            console.log(data["message"])
+                            alert('Ther has been some problem please refresh the page')
+                        }
+                    }
+                    catch(err){
+                        console.log(err)
+                        alert('Ther has been some problem please refresh the page')
+                    }
+                },
+                async showDetailedHistory(){
+                    this.viewModalConfig.brief = false
+                    this.viewModalConfig.detailed = true
+                    this.viewModalConfig.loading = true
+                    try{
+                        const data = await this.fetchData('/history',"POST",{id : this.currentTask._id})
+                        if(data === false){
+                            localStorage.clear()
+                            window.location.href="/expired"
+                            return
+                        }
+                        else if(data["message"] === "successful"){
+                            this.viewModalConfig.loading = false
+                            this.viewModalConfig.history = data["data"]
+                        }
+                        else{
+                            console.log(data["message"])
+                            alert('Ther has been some problem please refresh the page')
+                        }
+                    }catch(err){
+                        console.log(err)
+                        this.closeViewModal()
+                    }
+                },
+                async getWorkers(){
+                    try{
+                        const data = await this.fetchData('/map/worker',"GET")
+                        if(data === false){
+                            localStorage.clear()
+                            window.location.href="/expired"
+                            return
+                        }
+                        else if(data["message"] === "successful"){
+                            this.workerMap  = data["data"]
+                            for(var item in this.workerMap){
+                                this.workers.push({"id" : item,"name" : this.workerMap[item]})
+                            }
+                        }
+                        else{
+                            console.log(data["message"])
+                            alert('Ther has been some problem please refresh the page')
+                        }
+                    }
+                    catch(err){
+                        console.log(err)
+                        alert('Ther has been some problem please refresh the page')
+                    }
+                    
+                },                
+                async getNotifications(){
+                    try{
+                        const data = await this.fetchData('/notifications',"POST",{"last" : this.notifications.lastNotificationEntry})
+                        if(data === false){
+                            localStorage.clear()
+                            window.location.href="/expired"
+                            return
+                        }
+                        //console.log(data)
+                        if(data["message"] === "successful"){
+                            if(data["data"].length > 0){
+                                this.notifications.tab = data["data"].concat(this.notifications.tab)
+                                this.notifications.tab.forEach(e => {
+                                    e["creationDate"] = moment(new Date(e["creationDate"])).format('MMMM DD YYYY, h:mm a');
+                                    if(["New task","Task re-assigned","Task edited","Task assigned","Task re-opened","Task completed","Task started","Task in review"].indexOf(e["title"]) !== -1){
+                                        e["allowView"] = true
+                                    }
+                                })
+                                this.notifications.dropdown = this.notifications.tab.slice(0,this.notifications.countInDropdown)
+                                this.currentNotificationCount += data["data"].length
+                            }
+                            else{
+
+                            }
+                        }
+                        else{
+                            console.log(data["message"])
+                            alert("Notification service is not working")
+                        }
+                    }
+                    catch(err){
+                        console.log(err)
+                        alert("Notification service is not working")
+                    }
+                },
+                async getTasks(){
+                    try{
+                        const data = await this.fetchData('/list/admin','GET')
+                        if(data === false){
+                            localStorage.clear()
+                            window.location.href="/expired"
+                            return
+                        }
+                        this.tasks.splice(0)
+                        this.taskSummary = JSON.parse(JSON.stringify({created : 0,assigned : 0,started : 0,inReview : 0,completed : 0,createdNotAssigned : 0,assignedNotStarted : 0,startedNotReview : 0,reviewedNotCompleted : 0,pastDeadline : 0}))
+                        if(data["message"] === "successful"){
+                            data["data"].forEach(e => {
+                                //console.log(e.assigned.status)
+                                var deadline = moment(new Date(e.creationDate)).add(parseInt(e.storyPoints),'days')
+                                const timeToDeadline = (deadline.diff(moment(new Date()),'hours')/24).toPrecision(2)
+                                e['deadline'] = timeToDeadline > 0 || e.assigned.status !== "completed"? timeToDeadline : 1000
+                                if(e.assigned.status === "created"){
+                                    e["isCreated"] = true
+                                    this.taskSummary.created += 1
+                                }
+                                else if(e.assigned.status === "assigned"){
+                                    e["isAssigned"] = true
+                                    this.taskSummary.created +=1
+                                    this.taskSummary.assigned +=1
+                                }
+                                else if(e.assigned.status === "started"){
+                                    e["isStarted"] = true
+                                    this.taskSummary.created +=1
+                                    this.taskSummary.assigned +=1
+                                    this.taskSummary.started +=1
+                                }
+                                else if(e.assigned.status === "review"){
+                                    e["inReview"] = true
+                                    this.taskSummary.created +=1
+                                    this.taskSummary.assigned +=1
+                                    this.taskSummary.started +=1
+                                    this.taskSummary.inReview +=1
+                                }
+                                else if(e.assigned.status === "completed"){
+                                    e["isCompleted"] = true
+                                    this.taskSummary.created +=1
+                                    this.taskSummary.assigned +=1
+                                    this.taskSummary.started +=1
+                                    this.taskSummary.inReview +=1
+                                    this.taskSummary.completed +=1
+                                }
+                                if(e.deadline < 0){
+                                    this.taskSummary.pastDeadline += 1
+                                    e["pastDeadline"] = true
+                                }
+                                else if(e.deadline <= 2){
+                                    e["isUrgent"] = true
+                                }
+                                this.tasks.push(e)
+                            })
+                            this.tasks.sort((a,b)=> {return a.deadline - b.deadline})
+                            this.taskSummary.createdNotAssigned = this.taskSummary.created - this.taskSummary.assigned
+                            this.taskSummary.assignedNotStarted = this.taskSummary.assigned - this.taskSummary.started
+                            this.taskSummary.startedNotReview = this.taskSummary.started - this.taskSummary.inReview
+                            this.taskSummary.reviewedNotCompleted = this.taskSummary.inReview - this.taskSummary.completed
+                            //console.log(this.tasks)
+                        }   
+                        else{
+                            alert("Please refresh again there has been some error")
+                        }
+                    }catch(err){
+                        console.log(err)
+                        alert("There has been some error, Please refresh and try again")
+                    }
+
+                },
+                async updateUser(){
+                    try{
+                        var tcs = this.updatedUser.tcs_email
+                        if(this.validateEmail(tcs) == false || tcs.split("@")[2] === secondaryDomain){
+                            this.generateAlert("update","Enter proper TCS email","error") 
+                            return
+                        }
+                        else if(/^\d+$/.test(this.updatedUser.empID) === false){
+                            this.generateAlert("update","Employee ID must contain only numbers","error") 
+                            return
+                        }
+                        else if(/^\d+$/.test(this.updatedUser.wwID) === false){
+                            this.generateAlert("update","WWID must contain only numbers","error") 
+                            return
+                        }
+                        else{
+                            const data = await this.fetchData('/update',"POST",{"data" : JSON.stringify(this.updatedUser)})
+                            if(data === false){
+                                // localStorage.clear()
+                                // window.location.href="/expired"
+                                return
+                            }
+                            else if(data["message"] === "Profile updated successfully"){
+                                this.generateAlert("update","Profile updated successfully","success")
+                                //console.log(data["user"])
+                                this.user = data["user"]
+                                this.updatedUser = data["user"]
+                            }
+                            else{
+                                this.generateAlert("update",data["message"],"error")
+                            }
+                        }
+                    }
+                    catch(err){
+                        console.log(err)
+                        this.generateAlert("update",err.errmsg,"error")
+                    }
+                },
+                async updatePassword(){
+                    try{
+                        if(this.changePassword.current === "" || this.changePassword.new === "" || this.changePassword.newRepeat === "")
+                        {
+                            //console.log('jiq')
+                            this.generateAlert("password","All fields are mandatory","error")
+                            return
+                        }
+                        else if(this.changePassword.new !== this.changePassword.newRepeat){
+                            this.generateAlert("password","New passwords don't match","error")
+                            return
+                        }
+                        else if(this.passwordPolicy(this.changePassword.new) === false){
+                            this.generateAlert("password","Set password according to password policy","error")
+                            return
+                        }
+                        else{
+                            const obj = {
+                                id : this.user._id,
+                                old : md5(this.changePassword.current),
+                                new : md5(this.changePassword.new)
+                            }
+                            //console.log(obj)
+                            const data = await this.fetchData('/password',"POST",obj)
+                            if(data === false){
+                                // localStorage.clear()
+                                // window.location.href="/expired"
+                                return
+                            }
+                            //console.log(data)
+                            else if(data["message"] === "Password changed successfully"){
+                                this.generateAlert("password","Password has been successfully changed","success")
+                            }
+                            else{
+                                this.generateAlert("password",data["message"],"error")
+                            }
+                        }
+                    }catch(err){
+                        console.log(err)
+                        this.generateAlert("password","There has been some error","error")
+                    }
+                },
+                async createNewTask(){
+                    //console.log(this.currentTask)
+                    if(this.currentTask.taskName === ""){
+                        this.generateAlert("task","Task name cannot be empty","error")
+                        return
+                    }
+                    else if(this.currentTask.taskDescription === ""){
+                        this.generateAlert("task","Task description cannot be empty","error")
+                        return
+                    }
+                    else if(this.currentTask.storyPoints === ""){
+                        this.generateAlert("task","Expected time cannot be empty","error")
+                        return
+                    }
+                    else{
+                        const obj = {
+                            name : this.currentTask.taskName,
+                            desc : this.currentTask.taskDescription,
+                            storypoints : this.currentTask.storyPoints
+                        }
+                        const taskData = await this.fetchData(`/new`,"POST",obj)
+                        if(taskData === false){
+                            localStorage.clear()
+                            window.location.href="/expired"
+                            return
+                        }
+                        //console.log(taskData)
+                        else if(this.currentTask.assigned.worker_id == ""){
+                            if(taskData["message"] === "Task created successfully"){
+                                this.generateAlert("task",taskData["message"],"success")
+                            }
+                            else{
+                                this.generateAlert("task","New task could not be generated","error")
+                                return
+                            }
+                        }
+                        else{
+                            var task_id = taskData["task"]
+                            console.log(task_id)
+                            var assignObj = {
+                                task: task_id,
+                                worker_id : this.currentTask.assigned.worker_id
+                            }
+                            const assignData = await this.fetchData('/assign',"POST",assignObj)
+                            if(assignData === false){
+                                // localStorage.clear()
+                                // window.location.href="/expired"
+                                return
+                            }
+                            else if(assignData["message"] === "Task assigned successfully"){
+                                this.generateAlert("task","New task has been generated and assigned","success")
+                            }
+                            else{
+                                console.log(assignData["message"])
+                                this.generateAlert("task","New task could not be generated or assigned","error")
+                                return
+                            }
+                        }
+                    }
+                    await this.getTasks()
+                    this.filterTasks()
+                    if(this.taskModalConfig.addMore === false)
+                        this.closeTaskModal()
+                },
+                async editTask(){
+                    if(parseFloat(this.currentTask.deadline) < 0){
+                        alert("Deadline for this task has passed")
+                    }
+                    else if(this.currentTask.assigned.status === 'started'){
+                        alert('Started tasks cannot be edited')
+                        return
+                    }
+                    else if(this.currentTask.assigned.status === 'review'){
+                        alert('Tasks in review cannot be edited')
+                        return
+                    }
+                    else if(this.currentTask.assigned.status === 'completed'){
+                        alert('Completed tasks cannot be edited')
+                        return
+                    }
+                    else{
+                        if(this.currentTask.taskName === ""){
+                            this.generateAlert("task","Task name cannot be empty","error")
+                        }
+                        else if(this.currentTask.taskDescription === ""){
+                            this.generateAlert("task","Task description cannot be empty","error")
+                        }
+                        else{
+                            const obj = {
+                                task : this.currentTask._id,
+                                name : this.currentTask.taskName,
+                                desc : this.currentTask.taskDescription,
+                                storypoints : this.currentTask.storyPoints,
+                                assignedTo : this.currentTask.assigned.worker_id
+                            }
+                            //console.log(obj)
+                            const data = await this.fetchData('/edit',"POST",obj)
+                            if(data === false){
+                                // localStorage.clear()
+                                // window.location.href="/expired"
+                                return
+                            }
+                            else if(data["message"] === "Task has been successfully updated"){
+                                this.generateAlert("task","Task has been successfully updated","success")
+                                await this.getTasks()
+                                console.log(this.tasks)
+                                this.filteredTasks = this.tasks
+                            }
+                            else{
+                                console.log(data["message"])
+                                this.generateAlert("task","Task could not be updated","error")
+                            }
+                        }
+                    }
+                },
+                async assignTask(){
+                    if(parseFloat(this.currentTask.deadline) < 0){
+                        alert("Deadline for this task has passed")
+                    }
+                    if(this.currentTask.assigned.status === "assigned"){
+                        this.generateAlert('assign','To reassign tasks go to edit tab','warning')
+                        return
+                    }
+                    if(this.currentTask.assigned.status === 'started' || this.currentTask.assigned.status === 'review' || this.currentTask.assigned.status === 'completed'){
+                        this.generateAlert('assign','Once started tasks cannot be (re)assigned','error')
+                        return
+                    }
+                    else{
+                        const obj = {
+                            task : this.currentTask._id,
+                            worker_id : this.currentTask.assigned.worker_id
+                        }
+                        const data = await this.fetchData('/assign',"POST",obj)
+                        if(data === false){
+                            localStorage.clear()
+                            window.location.href="/expired"
+                            return
+                        }
+                        else if(data["message"] === "Task assigned successfully"){
+                            this.generateAlert('assign','Task assigned successfully','success')
+                            await this.getTasks()
+                            this.filterTasks()
+                        }
+                        else{
+                            this.generateAlert('assign',data["message"],'error')
+                        }
+                    }
+                },
+                async archiveTask(id){
+                    try{
+                        //console.log(id)
+                        const selectedTask = this.filteredTasks[id]
+                        //console.log(selectedTask.assigned.status !== 'completed')
+                        if(selectedTask.assigned.status !== 'completed'){
+                            alert('Only completed tasks can be archived')
+                        }
+                        else{
+                            const data = await this.fetchData('/archive','POST',{"task_id" : selectedTask._id})
+                            if(data === false){
+                                // localStorage.clear()
+                                // window.location.href="/expired"
+                                return
+                            }
+                            else if(data["message"] ==="Task archived") {
+                                await this.getTasks()
+                                this.filterTasks()
+                                alert('Task has been successfully archived, You can now view this task in the archived tasks tab')
+                            }
+                            else{
+                                alert(data["message"])
+                            }
+                        }
+                    }catch(err){
+                        console.log(err)
+                        alert('Task could not be archived please try again')
+                    }
+                },
+                async deleteTask(){
+                    if((this.currentTask.assigned.status === 'started' || this.currentTask.assigned.status === 'review' || this.currentTask.assigned.status === 'completed')&&(parseFloat(this.currentTask.deadline) > 0)){
+                        alert('Once started, tasks cannot be deleted')
+                        return
+                    }
+                    else{
+                        const obj = {
+                            task : this.currentTask._id,
+                            deadline : parseFloat(this.currentTask.deadline)
+                        }
+                        const data = await this.fetchData('/delete',"POST",obj)
+                        if(data === false){
+                            localStorage.clear()
+                            window.location.href="/expired"
+                            return
+                        }
+                        else if(data["message"] === "Task deleted and subsequent assignments deleted"){
+                            this.closeDeleteModal()
+                            alert('Task deleted and subsequent assignments deleted')
+                            await this.getTasks()
+                            this.filterTasks()
+                        }
+                        else{
+                            alert(data["message"])
+                        }
+                    }
+                },
+                async completeTask(arg){
+                    if(parseFloat(this.currentTask.deadline) < 0){
+                        alert("Deadline for this task has passed")
+                    }
+                    else if(this.currentTask.assigned.status !== 'review'){
+                        alert("Only tasks sent for review can be marked as completed")
+                    }
+                    else if(this.currentTask.assigned.completeComment === ""){
+                        this.generateAlert('complete',"Comments cannot be left empty","warning")
+                    }
+                    else{
+                        const obj = {
+                            worker : this.currentTask.assigned.worker_id,
+                            task :  this.currentTask._id,
+                            comment : this.currentTask.assigned.completeComment
+                        }
+                        if(arg === 'redo'){
+                            obj["redo"] = true
+                        }
+                        const data = await this.fetchData('/complete',"POST",obj)
+                        if(data === false){
+                            localStorage.clear()
+                            window.location.href="/expired"
+                            return
+                        }
+                        else if(data["message"] === "Task marked complete successfully"){
+                            alert("Task has been marked completed")
+                            await this.getTasks()
+                            this.filterTasks()
+                        }
+                        else if(data["message"] === "Task marked started"){
+                            alert("Task has been re-opened successfully")
+                            await this.getTasks()
+                            this.filterTasks()
+                        }
+                        else{
+                            alert(data["message"])
+                        }
+                    }
+                    this.closeCompleteModal()
+                },
+                async logout(){
+                   try{
+                        const data = await this.fetchData('/logout',"POST",null)
+                        if(data === false){
+                            localStorage.clear()
+                            window.location.href="/expired"
+                            return
+                        }
+                        else if(data["message"] === "Logged out successfully"){
+                            localStorage.clear()
+                            window.location.href="/"
+                            return
+                        }
+                        else{
+                            console.log(data["message"])
+                            alert("There has been some error logging out,Please try again")
+                        }
+                   }catch(err){
+                        console.log(err)
+                        alert("There has been some error logging out,Please try again")
+                   }
+                },
+                async getUsers(){
+                    try{
+                        const data = await  this.fetchData('/map','GET')
+                        if(data == false){
+                            localStorage.clear()
+                            window.location.href="/expired"
+                            return
+                        }
+                        else if(data["message"] === "successful"){
+                            this.users = data["data"]
+                            this.users.forEach(e => {
+                                this.userMap[e._id] = e.username
+                                if(e.userType === "worker"){
+                                    this.workerMap[e._id] = e.username
+                                    this.workers.push({"name" : e.username,"id" : e._id})
+                                }
+                            })
+                            //console.log(this.userMap,this.workerMap,this.workers)
+                        }
+                        else{
+                            alert(data["message"])
+                        }
+                        //console.log(this.users)
+                    }catch(err){
+                        alert("Some kind of error has occured")
+                        console.log(err)
+                    }
+                },
+                async fetchData(endpoint,method,body = null){
+                    try{
+                        var resp = await fetch(`${this.apiUrl}${endpoint}`,{
+                            method : method,
+                            credentials : "include",
+                            headers : {
+                                'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+                            },
+                            body : body !== null? this.generateRequestBody(body) : null
+                        })
+                        if(resp.status === 401){
+                            return false
+                        }
+                        else{
+                            var data = await resp.json()
+                            if(data === null){
+                                window.location.href="/no"
+                                return
+                            }
+                            return data
+                        }
+                    }catch(err){
+                        console.log(err)
+                        return null
+                    }
+                }
+            }
+        })
+    </script>
+</body>
+</html>

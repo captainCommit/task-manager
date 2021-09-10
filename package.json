@@ -1,0 +1,36 @@
+{
+  "name": "assignment",
+  "version": "1.0.0",
+  "description": "Backend API for task management and authentication using JWT",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "nodemon app.js"
+  },
+  "author": "Suparno Karmakar",
+  "license": "MIT",
+  "dependencies": {
+    "body-parser": "^1.19.0",
+    "cloudinary": "^1.25.1",
+    "cookie-parser": "^1.4.5",
+    "cors": "^2.8.5",
+    "csurf": "^1.11.0",
+    "dot-env": "0.0.1",
+    "dotenv": "^8.2.0",
+    "express": "^4.17.1",
+    "express-http-proxy": "^1.6.2",
+    "http-server": "^0.12.3",
+    "imagekit": "^3.1.2",
+    "jsonschema": "^1.4.0",
+    "jsonwebtoken": "^8.5.1",
+    "md5": "^2.3.0",
+    "moment": "^2.29.1",
+    "mongoose": "^5.9.15",
+    "nodemailer": "^6.6.1",
+    "passport": "^0.4.1",
+    "passport-jwt": "^4.0.0",
+    "passport-local": "^1.0.0",
+    "socket.io": "^4.0.1",
+    "vue2-daterange-picker": "^0.6.5"
+  }
+}

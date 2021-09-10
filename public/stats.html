@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="This application is a pc based task manager use for small teams to arrange and manage their individual tasks">
+    <meta name="keywords" content="Task manager,scheduler,JIRA,task,task management,tools,lowcode tool">
+    <meta name="author" content="Suparno Karmakar">
+    <title>Analytics Dashboard</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700,400italic|Material+Icons">
+    <link rel="stylesheet" href="assets/font-awesome-4.7.0/css/font-awesome.min.css">
+    <link rel="stylesheet" href="assets/css/bootstrap.min.css">
+    <link rel="stylesheet" href="assets/css//default.css">
+    <link rel="stylesheet" href="assets/css/vue-material.min.css">
+    <link rel="stylesheet" href="assets/css/daterangepicker.min.css">
+    <link rel="stylesheet" href="assets/css/stat-style.css">
+</head>
+<body style="overflow-x: hidden;">
+    <div class="container-fluid" id="app" style="padding:0px;overflow-x:hidden;">
+        <nav class="navbar navbar-expand-lg navbar-dark justify-content-between" style="background-color: #563d7c;">
+            <a class="navbar-brand lnk" href="/stats" style="color:white;">Analytics Dashboard</a>
+            <ul class="navbar-nav ml-auto">
+                <li style="width:100% !important;">
+                    <div class="input-group" id="reportrange" style="width:100% !important;">
+                        <input type="text" class="form-control" placeholder="From the beginning of time" id="rangevalue" disabled style="width:250px !important;" v-on:change="run">
+                        <div class="input-group-append">
+                            <span class="input-group-text"><i class="fa fa-calendar"></i></span>
+                        </div>
+                    </div>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" id="navbarDropdown" href="#"  v-on:click="()=>{window.location.href='/';}">
+                        <i class="fa fa-home" style="font-size: 1.4rem !important; cursor:pointer;" data-placement="left" data-toggle="tooltip" title="Back to home"></i>
+                    </a>
+                </li>
+            </ul>
+        </nav>
+        <div class="row justify-content-start">
+            <div class="col-4">
+                <div class="row ml-1">
+                    <div class="col-6" style="padding-right:3px;padding-left:0px;">
+                        <md-card md-with-hover>
+                            <md-card-header class="text-center">
+                              <div class="md-title">New user count</div>
+                            </md-card-header>
+                            <md-card-content  class="text-center">
+                             <span class="md-display-3">{{text.users}}</span>
+                            </md-card-content>
+                        </md-card>
+                    </div>
+                    <div class="col-6" style="padding-right:3px;padding-left:3px;">
+                        <md-card md-with-hover>
+                            <md-card-header class="text-center">
+                              <div class="md-title">New task count</div>
+                            </md-card-header>
+                            <md-card-content  class="text-center">
+                                <span class="md-display-3">{{text.tasks}}</span>
+                            </md-card-content>
+                        </md-card>
+                    </div>
+                </div>
+                <div class="row mt-1 mb-2">
+                    <div class="col-12" style="padding-right:3px;padding-left:3px;">
+                        <md-card md-with-hover>
+                            <md-card-header>
+                              <div class="md-title text-center">Average Turnaround time</div>
+                            </md-card-header>
+                            <md-card-content class="text-center">
+                                <span class="md-display-2">{{text.avgTat === 0 || text.avgTat === 'NA' ? 'NA' : text.avgTat}} {{(text.avgTat === 'NA' || text.avgTat === 0 ?"":text.avgTat > 1?"days" : "day")}}</span>
+                            </md-card-content>
+                        </md-card>
+                    </div>
+                </div>
+            </div>
+            <div class="col-4 mb-2" style="padding-right:3px;padding-left:3px;">
+                <md-card md-with-hover style="min-height: 100% !important;">
+                    <canvas class="row" id="userchart" height="100%" width="100%"></canvas>
+                </md-card>
+            </div>
+            <div class="col-4 mb-2" style="padding-right:3px;padding-left:3px;">
+                <md-card md-with-hover style="min-height: 100% !important;" class="mr-1">
+                    <canvas class="row" id="taskchart" height="100%" width="100%"></canvas>
+                </md-card>
+            </div>
+        </div>
+        <div class="row justify-content-start mb-1">
+            <div class="col-6">
+                <div class="row ml-1" style="max-height: 40% !important;">
+                    <div class="col-12" style="padding-right:3px;padding-left:0px;">
+                        <md-card md-with-hover style="max-height:100% !important;overflow-y:auto;">
+                            <md-card-header>
+                                <div class="md-title">Activity Of Assocaites</div>
+                            </md-card-header>
+                            <md-card-content style="padding: 0px !important;">
+                                <md-table v-model="workerData" md-sort="name" md-sort-order="asc" md-card>
+                                    <md-table-row slot="md-table-row" slot-scope="{ item }">
+                                      <md-table-cell md-label="Emp ID" md-numeric>{{ item.empID }}</md-table-cell>
+                                      <md-table-cell md-label="Full Name" md-sort-by="name">{{ item.fullName }}</md-table-cell>
+                                      <md-table-cell md-label="Designation" md-sort-by="name">{{ item.role }}</md-table-cell>
+                                      <md-table-cell md-label="Started #" md-sort-by="email">{{ item.started }}</md-table-cell>
+                                      <md-table-cell md-label="In Review" md-sort-by="title">{{ item.review }}</md-table-cell>
+                                      <md-table-cell md-label="Completed" md-sort-by="title">{{ item.complete }}</md-table-cell>
+                                    </md-table-row>
+                                </md-table>
+                            </md-card-content>
+                        </md-card> 
+                    </div>
+                </div>
+            </div>
+            <!--div class="col-6">
+                <div class="row mr-1">
+                    <div class="col-12" style="padding-right:3px;padding-left:0px;">
+                        <md-card md-with-hover>
+                            <canvas class="row" id="efficiency" height="100%" width="100%"></canvas>
+                        </md-card>
+                </div>
+            </div-->
+            <div class="col-6">
+                <div class="row mr-1">
+                    <div class="col-12" style="padding-right:3px;padding-left:0px;">
+                        <md-card md-with-hover>
+                            <md-card-header>
+                                <div class="md-title">Activity Of Managers</div>
+                            </md-card-header>
+                            <md-card-content style="padding: 0px !important;">
+                                <md-table v-model="adminData" md-sort="name" md-sort-order="asc">
+                                    <md-table-row slot="md-table-row" slot-scope="{ item }">
+                                      <md-table-cell md-label="Emp ID" md-numeric>{{ item.empID }}</md-table-cell>
+                                      <md-table-cell md-label="Full Name" md-sort-by="name">{{ item.fullName }}</md-table-cell>
+                                      <md-table-cell md-label="Designation" md-sort-by="name">{{ item.role }}</md-table-cell>
+                                      <md-table-cell md-label="Created #" md-sort-by="email">{{ item.created }}</md-table-cell>
+                                      <md-table-cell md-label="Reviewing" md-sort-by="title">{{ item.review }}</md-table-cell>
+                                      <md-table-cell md-label="Completed" md-sort-by="title">{{ item.complete }}</md-table-cell>
+                                    </md-table-row>
+                                </md-table>
+                            </md-card-content>
+                        </md-card> 
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="assets/js/vue@2.js"></script>
+    <script src="assets/js/moment.min.js"></script>
+    <script src="assets/js/jquery-3.6.0.js"></script>
+    <script src="assets/js/popper.min.js"></script>
+    <script src="assets/js/bootstrap.bundle.js"></script>
+    <script src="assets/js/daterangepicker.js"></script>
+    <script src="assets/js/vue-material.min.js"></script>
+    <script src="assets/js/chart.js"></script>
+    <script src="assets/js/vue-chartjs.min.js"></script>
+    <script src="assets/js/script.js"></script>
+    <script>
+        Vue.use(VueMaterial.default)
+        const dummyWorker = {
+            assigned: 4,
+            complete: 0,
+            created: 4,
+            empID: "12345678",
+            fullName: "Adam Smith",
+            reopen: 0,
+            review: 1,
+            role: "Consultant",
+            started: 2,
+        }
+        const dummyManager = {
+            assigned: 4,
+            complete: 0,
+            created: 4,
+            empID: "12345678",
+            fullName: "Adam Smith",
+            reopen: 0,
+            review: 1,
+            role: "Consultant",
+            started: 2,
+        }
+        var donutConfig = {
+            type: 'doughnut',
+            data: null,
+            options: {
+                responsive: true,
+                title: {
+                    display: true,
+                    text: "",
+                },
+                legend : {
+                    position : null,
+                    align : null,
+                },
+                maintainAspectRatio: false,
+            }
+        };
+        var app = new Vue({
+            el : "#app",
+            data  : ()=>{
+                return {
+                    apiUrl : "http://localhost:3000/stat/",
+                    items: [
+                        { age: 40, first_name: 'Dickerson', last_name: 'Macdonald' },
+                        { age: 21, first_name: 'Larsen', last_name: 'Shaw' },
+                        { age: 89, first_name: 'Geneva', last_name: 'Wilson' },
+                        { age: 38, first_name: 'Jami', last_name: 'Carney' }
+                    ],
+                    text : {
+                        users : "",
+                        tasks : "",
+                        avgTat : 0,
+                    }, 
+                    graphs : {
+                        users : {
+                            labels : [],
+                            data : [],
+                            canvas : "userchart",
+                            title : "User Distribution",
+                            legend : {"position" : "bottom"}
+                        },
+                        tasks : {
+                            labels : [],
+                            data : [],
+                            canvas : "taskchart",
+                            title : "Task Distribution",
+                            legend : {"position" : "bottom"}
+                        },
+                    },
+                    timePeriod : {
+                        start : "",
+                        end : "",
+                    },
+                    tables : {
+                        worker : {
+                            rawData : {},
+                        },
+                        admin : {
+                            rawData : {},
+                        }
+                    },
+                    trends : {},
+                    adminData : [],
+                    workerData : []
+                }
+            },
+            created : async function(){
+                $('#reportrange').daterangepicker({
+                    "autoApply": true,
+                    "showDropdowns": true,
+                    "opens": "left",
+                    ranges: {
+                       'Today': [moment(), moment()],
+                       'Yesterday': [moment().subtract(1, 'days'), moment().subtract(1, 'days')],
+                       'Last 7 Days': [moment().subtract(6, 'days'), moment()],
+                       'Last 30 Days': [moment().subtract(29, 'days'), moment()],
+                       'Last 6 months': [moment().subtract(6, 'month').startOf('month'), moment().subtract(1, 'month').startOf('month')],
+                       'All' : ["",""]
+                    }
+                    },(function(start,end,label){
+                    //console.log(start,end)
+                    this.run(start,end)
+                    if(label === 'All')
+                    {
+                        //console.log('Hi')
+                        $('#rangevalue').val('Fom the beginning of time')
+                        return
+                    }
+                    
+                    //console.log(`${start.format("MMMM Do YYYY")} - ${end.format("MMMM Do YYYY")}`)
+                    if(label !== 'Custom Range'){
+                        $('#rangevalue').val(label)
+                        this.timePeriod.start = start
+                        this.timePeriod.end = end
+                    }
+                    else{
+                        $('#rangevalue').val(`${start.format("MMMM Do YYYY")} - ${end.format("MMMM Do YYYY")}`)
+                        this.timePeriod.start = start
+                        this.timePeriod.end = end
+                    }
+                }).bind(this));
+                var [flagText,flagTable,flagTrend] = await Promise.all([this.getTexts(),this.getTables(),this.getTrends()])
+                //(data,tables,rawTrends)
+                if(flagTable && flagText && flagTrend === false)
+                {
+                    alert('There has been some kind of error')
+                    window.location.href="/"
+                }
+            },
+            methods : {
+                run(start,end){
+                    console.log(start,end)
+                },
+                async getTexts(){
+                    var data = await this.fetchData('count','GET')
+                    if(data){
+                        this.text.users = parseInt(data['users'])
+                        this.text.tasks = parseInt(data['tasks'])
+                        this.text.avgTat = data['avg'] === 'NA'?'NA' : parseInt(data["avg"])
+                        data.userGroups.forEach(e => {
+                            this.graphs.users.data.push(e['count'])
+                            this.graphs.users.labels.push(e['_id'])
+                        })
+                        data.taskGroups.forEach(e => {
+                            this.graphs.tasks.data.push(e['count'])
+                            this.graphs.tasks.labels.push(e['_id'])
+                        })
+                        this.createDonut('users')
+                        this.createDonut('tasks')
+                        return true
+                    }
+                    else{
+                        return false
+                    }
+                },
+                async getTables(){
+                    var data = await this.fetchData('list','GET')
+                    if(data){
+                        this.tables.worker.rawData = data['workers']
+                        this.tables.admin.rawData = data['admins']
+                        this.createTables('admin')
+                        this.createTables('worker')
+                        return true
+                    }
+                    else{
+                        return false
+                    }
+                },
+                async getTrends(){
+                    var data = await this.fetchData('trends')
+                    if(data){
+                        this.trends = data
+                        this.createTrendLines(data)
+                        return true
+                    }
+                    else{
+                        return false
+                    }
+                },
+                async fetchData(endpoint,method,body = null){
+                    try{
+                        var resp = await fetch(`${this.apiUrl}${endpoint}`,{
+                            method : method,
+                            credentials : "include",
+                            headers : {
+                                'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+                            },
+                            body : body !== null? this.generateRequestBody(body) : null
+                        })
+                        if(resp.status === 401){
+                            return false
+                        }
+                        else{
+                            var data = await resp.json()
+                            if(data === null){
+                                window.location.href="/no"
+                                return
+                            }
+                            else if(data["message"] !== 'successful'){
+                                alert('Something went wrong')
+                                return false
+                            }
+                            return data['data']
+                        }
+                    }catch(err){
+                        console.log(err)
+                        return null
+                    }
+                },
+                generateRequestBody(details){
+                    var formBody = [];
+                    for (var property in details) {
+                    var encodedKey = encodeURIComponent(property);
+                    var encodedValue = encodeURIComponent(details[property]);
+                    formBody.push(encodedKey + "=" + encodedValue);
+                    }
+                    formBody = formBody.join("&");
+                    return formBody
+                },
+                createDonut(type){
+                    const canvas = document.getElementById(this.graphs[type].canvas).getContext('2d')
+                    var cfg = JSON.parse(JSON.stringify(donutConfig))
+                    cfg.options.title.text = this.graphs[type].title
+                    cfg.options.legend.position = this.graphs[type].legend.position
+                    cfg.options.legend.align = this.graphs[type].legend.align
+                    var data = {
+                        labels : this.graphs[type].labels,
+                        datasets : [{
+                            data : this.graphs[type].data,
+                            backgroundColor: ['rgba(255, 99, 132, 1.0)','rgba(54, 162, 235, 1.0)','rgba(255, 206, 86, 1.0)','rgba(75, 192, 192, 1.0)','rgba(153, 102, 255, 1.0)','rgba(255, 159, 64, 1.0)']
+                        }]
+                    }
+                    cfg['data'] = data
+                    //console.log(cfg)
+                    var chart = new Chart(canvas,cfg)
+                    //console.log(chart,this.graphs[type].legend)
+                },
+                createTables(type){
+                    this.tables[type].rawData.forEach(e=>{
+                        var obj = JSON.parse(JSON.stringify(e.userType === 'admin'?dummyManager:dummyWorker))
+                        obj.empID = e.empID
+                        obj.fullName = e.fullName
+                        obj.role = e.role
+                        e.assigned.forEach( t => {
+                            if(e.userType === 'worker'){
+                                if(t.status === 'assigned'){
+                                    obj["assigned"] = obj.assigned === undefined?1:obj.assigned+1
+                                }
+                                else if(t.status === "started"){
+                                    obj["assigned"] = obj.assigned === undefined?1:obj.assigned+1
+                                    obj["started"] = obj.started === undefined?1:obj.started+1
+                                }
+                                else if(t.status === 'review'){
+                                    obj["assigned"] = obj.assigned === undefined?1:obj.assigned+1
+                                    obj["started"] = obj.started === undefined?1:obj.started+1
+                                    obj["review"] = obj.review === undefined?1:obj.review+1
+                                }
+                                else if(t.status === 'completed'){
+                                    obj["assigned"] = obj.assigned === undefined?1:obj.assigned+1
+                                    obj["started"] = obj.started === undefined?1:obj.started+1
+                                    obj["review"] = obj.review === undefined?1:obj.review+1
+                                    obj["complete"] = obj.complete === undefined?1:obj.complete+1
+                                }
+                            }
+                            else if(e.userType === 'admin'){
+                                if(t.status === "created"){
+                                    obj["created"] = obj.created === undefined?1:obj.created+1
+                                }
+                                else if(t.status === 'assigned'){
+                                    obj["created"] = obj.created === undefined?1:obj.created+1
+                                    obj["assigned"] = obj.assigned === undefined?1:obj.assigned+1
+                                }
+                                else if(t.status === "started"){
+                                    obj["created"] = obj.created === undefined?1:obj.created+1
+                                    obj["assigned"] = obj.assigned === undefined?1:obj.assigned+1
+                                    obj["started"] = obj.started === undefined?1:obj.started+1
+                                }
+                                else if(t.status === 'review'){
+                                    obj["created"] = obj.created === undefined?1:obj.created+1
+                                    obj["assigned"] = obj.assigned === undefined?1:obj.assigned+1
+                                    obj["started"] = obj.started === undefined?1:obj.started+1
+                                    obj["review"] = obj.review === undefined?1:obj.review+1
+                                }
+                                else if(t.status === 'completed'){
+                                    obj["created"] = obj.created === undefined?1:obj.created+1
+                                    obj["assigned"] = obj.assigned === undefined?1:obj.assigned+1
+                                    obj["started"] = obj.started === undefined?1:obj.started+1
+                                    obj["review"] = obj.review === undefined?1:obj.review+1
+                                    obj["complete"] = obj.complete === undefined?1:obj.complete+1
+                                }
+                            }
+                            
+                        })
+                        if(e.userType === 'admin'){
+                            this.adminData.push(obj)
+                        }
+                        else if(e.userType === 'worker'){
+                            this.workerData.push(obj)
+                        }
+                    })
+                    //console.log(this.adminData)
+                    //console.log(this.workerData)
+                },
+                createTrendLines(data){
+                    console.log(data)
+                    datasets = []
+                    data.forEach(e => {
+                        
+                    })
+                }
+            }
+        })
+    </script>
+</body>
+</html>
