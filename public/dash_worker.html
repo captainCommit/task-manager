@@ -631,7 +631,7 @@
     <script src="assets/js/bootstrap-vue.min.js"></script>
     <script>
         Vue.component('vue-paginate', VuejsPaginate)
-        var socket = io('http://localhost:3001')
+        var socket = io('https://seahorse-app-pt8fm.ondigitalocean.app:3001')
         $(document).ready(function() {
             $("body").tooltip({ selector: '[data-toggle=tooltip]' });
         });
@@ -642,8 +642,8 @@
                     token : "",
                     loading : false,
                     user : {},
-                    apiUrl : "http://localhost:3000/api",
-                    unsecureApiUrl : "http://localhost:3000",
+                    apiUrl : "https://seahorse-app-pt8fm.ondigitalocean.app/api",
+                    unsecureApiUrl : "https://seahorse-app-pt8fm.ondigitalocean.app:3000",
                     updatedUser : {},
                     changePassword : {
                         current : "",

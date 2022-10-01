@@ -519,7 +519,7 @@
     <script src="assets/js/bootstrap.bundle.js"></script>
     <script src="assets/js/bootstrap-select.min.js"></script>
     <script>
-        var socket = io('http://localhost:3001')
+        var socket = io('https://seahorse-app-pt8fm.ondigitalocean.app:3001')
         $(document).ready(function() {
             $("body").tooltip({ selector: '[data-toggle=tooltip]' });
         });
@@ -531,8 +531,8 @@
                     loading : false,
                     user : {},
                     updatedUser : {},
-                    apiUrl : "http://localhost:3000/api",
-                    unsecureApiUrl : "http://localhost:3000",
+                    apiUrl : "https://seahorse-app-pt8fm.ondigitalocean.app:3000/api",
+                    unsecureApiUrl : "https://seahorse-app-pt8fm.ondigitalocean.app:3000",
                     changePassword : {
                         current : "",
                         new : "",

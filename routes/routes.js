@@ -39,6 +39,10 @@ String.prototype.shuffle = function() {
 };
 
 
+router.get('/test',(req,res)=>{
+  console.log('works')
+  res.send('works')
+})
 router.get('/expired',(req,res,next)=>{
   try{
     res.sendFile("expired.html",{root : path.join(__dirname,"../public")})

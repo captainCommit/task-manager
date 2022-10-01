@@ -156,15 +156,15 @@
     <script src="assets/js/bootstrap.js"></script>
     <script src="assets/js/bootstrap-select.min.js"></script>
     <script>
-        const apiUrl = "http://localhost:3000"
+        const apiUrl = "https://seahorse-app-pt8fm.ondigitalocean.app/api"
         const userDomain = ""
         const secondaryDomain = "tcs.com"
         var app = new Vue({
             el : "#app",
             data : ()=>{
                 return {
-                    apiUrl : "http://localhost:3000/api",
-                    unsecureApiUrl : "http://localhost:3000",
+                    apiUrl : "https://seahorse-app-pt8fm.ondigitalocean.app:3000/api",
+                    unsecureApiUrl : "https://seahorse-app-pt8fm.ondigitalocean.app:3000",
                     loginObject : {
                         email : "",
                         password : "",
