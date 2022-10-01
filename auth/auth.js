@@ -6,11 +6,13 @@ const JWTstrategy = require('passport-jwt').Strategy;
 const ExtractJWT = require('passport-jwt').ExtractJwt;
 var cookieExtractor = function(req) {
   try{
-    var token = null;
-    if (req && req.headers) token = req.headers.cookie;
-    token = token.replace("token=","")
-    //console.log(token)
-    return token;
+    let cookies = null;
+    if (req && req.headers) cookies = req.headers.cookie;
+    cookies = cookies.split(";")
+    token = cookies.filter(v => v.includes("token="))
+    let jwt = token[0].replace("token=","")
+    console.log(token[0],jwt)
+    return jwt;
   }
   catch(err)
   {

@@ -32,7 +32,6 @@ app.use(express.urlencoded({extended : true,limit:"50mb"}));
 console.log('Static pages are up')
 app.use(cors({
   credentials : true,
-  origin : ["http://localhost:3000","https://localhost:3000","http://localhost:5500","https://localhost:5500"],
 }))
 app.use('/', routes);
 app.use(express.static("public",{

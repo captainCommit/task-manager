@@ -1177,8 +1177,8 @@
                         else{
                             const data = await this.fetchData('/archive','POST',{"task_id" : selectedTask._id})
                             if(data === false){
-                                localStorage.clear()
-                                window.location.href="/expired"
+                                // localStorage.clear()
+                                // window.location.href="/expired"
                                 return
                             }
                             else if(data["message"] ==="Task archived") {
@@ -1202,8 +1202,8 @@
                     try{
                         const data = await this.fetchData('/history',"POST",{id : this.currentTask._id})
                         if(data === false){
-                            localStorage.clear()
-                            window.location.href="/expired"
+                            // localStorage.clear()
+                            // window.location.href="/expired"
                             return
                         }
                         else if(data["message"] === "successful"){
@@ -1223,8 +1223,8 @@
                     try{
                         const data = await this.fetchData('/profile',"POST")
                         if(data === false){
-                            localStorage.clear()
-                            window.location.href="/expired"
+                            // localStorage.clear()
+                            // window.location.href="/expired"
                             return
                         }
                         else if(data["message"] === 'successful'){
@@ -1244,8 +1244,8 @@
                     try{
                         const data = await this.fetchData('/map/admin',"GET")
                         if(data === false){
-                            localStorage.clear()
-                            window.location.href="/expired"
+                            // localStorage.clear()
+                            // window.location.href="/expired"
                             return
                         }
                         else if(data["message"] === "successful"){
@@ -1269,8 +1269,8 @@
                     try{
                         const data = await this.fetchData('/notifications',"POST",{"last" : this.notifications.lastNotificationEntry})
                         if(data === false){
-                            localStorage.clear()
-                            window.location.href="/expired"
+                            // localStorage.clear()
+                            // window.location.href="/expired"
                             return
                         }
                         else if(data["message"] === "successful"){
@@ -1298,8 +1298,8 @@
                     try{
                         const data = await this.fetchData('/list/worker','GET')
                         if(data === false){
-                            localStorage.clear()
-                            window.location.href="/expired"
+                            // localStorage.clear()
+                            // window.location.href="/expired"
                             return
                         }
                         else if(data["message"] === "successful"){
@@ -1368,8 +1368,8 @@
                 async startTask(){
                     const data = await this.fetchData('/start',"POST",{task : this.currentTask._id})
                     if(data === false){
-                        localStorage.clear()
-                        window.location.href="/expired"
+                        // localStorage.clear()
+                        // window.location.href="/expired"
                         return
                     }
                     else if(data["message"] === "Task marked started successfully"){
@@ -1420,8 +1420,8 @@
                         console.log(reader.result)
                         const data  = await this.fetchData('/review',"POST",{task : this.currentTask._id,comment : this.currentTask.assigned.reviewComment,image : reader.result},true)
                         if(data === false){
-                            localStorage.clear()
-                            window.location.href="/expired"
+                            // localStorage.clear()
+                            // window.location.href="/expired"
                             return
                         }
                         else if(data["message"] === "Task marked in-review successfully"){
@@ -1454,8 +1454,8 @@
                         else{
                             const data = await this.fetchData('/update',"POST",{"data" : JSON.stringify(this.updatedUser)})
                             if(data === false){
-                                localStorage.clear()
-                                window.location.href="/expired"
+                                // localStorage.clear()
+                                // window.location.href="/expired"
                                 return
                             }
                             else if(data["message"] === "Profile updated successfully"){
@@ -1503,8 +1503,8 @@
                             //console.log(obj)
                             const data = await this.fetchData('/password',"POST",obj)
                             if(data === false){
-                                localStorage.clear()
-                                window.location.href="/expired"
+                                // localStorage.clear()
+                                // window.location.href="/expired"
                                 return
                             }
                             //console.log(data)
@@ -1544,8 +1544,8 @@
                    try{
                         const data = await this.fetchData('/logout',"POST",null)
                         if(data === false){
-                            localStorage.clear()
-                            window.location.href="/expired"
+                            // localStorage.clear()
+                            // window.location.href="/expired"
                             return
                         }
                         else if(data["message"] === "Logged out successfully"){

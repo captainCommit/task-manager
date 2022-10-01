@@ -62,7 +62,8 @@
                         </a>
                         <div class="dropdown-menu" aria-labelledby="navbarDropdown">
                             <a class="dropdown-item" href="#" v-on:click="openNewTaskModal('save')">Create New Task</a>
-                            <a href="/bulk" class="dropdown-item">Bulk Upload Data</a>
+                            <a class="dropdown-item" href="/teams">Teams Window</a>
+                            <a data-toggle="modal" data-target="#bulkuploadmodal" class="dropdown-item">Bulk Upload Data</a>
                             <a href="#" class="dropdown-item" v-on:click = "openSearchUserModal()">Search User</a>
                             <a class="dropdown-item" href="#" v-on:click="openNotificationsModal()">Notifications</a>
                             <a class="dropdown-item" href="/stats" target="_blank">View Stats</a>
@@ -1806,8 +1807,8 @@
                         this.generateAlert('bulk',"Please wait your data is being uploaded","info")
                         var resp = await this.fetchData('/bulk',"POST",{"data" :  JSON.stringify({"list" : data,"images" : this.bulkUploadModalConfig.importType === 'tasks'? images : null}),"type" : type})
                         if(resp === false){
-                            localStorage.clear()
-                            window.location.href="/expired"
+                            // localStorage.clear()
+                            // window.location.href="/expired"
                             return
                         }
                         else{
@@ -2066,8 +2067,8 @@
                     try{
                         const data = await this.fetchData('/profile',"POST")
                         if(data === false){
-                            localStorage.clear()
-                            window.location.href="/expired"
+                            // localStorage.clear()
+                            // window.location.href="/expired"
                             return
                         }
                         else if(data["message"] === 'successful'){
@@ -2090,8 +2091,8 @@
                     try{
                         const data = await this.fetchData('/history',"POST",{id : this.currentTask._id})
                         if(data === false){
-                            localStorage.clear()
-                            window.location.href="/expired"
+                            // localStorage.clear()
+                            // window.location.href="/expired"
                             return
                         }
                         else if(data["message"] === "successful"){
@@ -2111,8 +2112,8 @@
                     try{
                         const data = await this.fetchData('/map/worker',"GET")
                         if(data === false){
-                            localStorage.clear()
-                            window.location.href="/expired"
+                            // localStorage.clear()
+                            // window.location.href="/expired"
                             return
                         }
                         else if(data["message"] === "successful"){
@@ -2136,8 +2137,8 @@
                     try{
                         const data = await this.fetchData('/notifications',"POST",{"last" : this.notifications.lastNotificationEntry})
                         if(data === false){
-                            localStorage.clear()
-                            window.location.href="/expired"
+                            // localStorage.clear()
+                            // window.location.href="/expired"
                             return
                         }
                         //console.log(data)
@@ -2171,8 +2172,8 @@
                     try{
                         const data = await this.fetchData('/list/admin','GET')
                         if(data === false){
-                            localStorage.clear()
-                            window.location.href="/expired"
+                            // localStorage.clear()
+                            // window.location.href="/expired"
                             return
                         }
                         this.tasks.splice(0)
@@ -2340,8 +2341,8 @@
                         }
                         const taskData = await this.fetchData(`/new`,"POST",obj)
                         if(taskData === false){
-                            localStorage.clear()
-                            window.location.href="/expired"
+                            // localStorage.clear()
+                            // window.location.href="/expired"
                             return
                         }
                         //console.log(taskData)
@@ -2452,8 +2453,8 @@
                         }
                         const data = await this.fetchData('/assign',"POST",obj)
                         if(data === false){
-                            localStorage.clear()
-                            window.location.href="/expired"
+                            // localStorage.clear()
+                            // window.location.href="/expired"
                             return
                         }
                         else if(data["message"] === "Task assigned successfully"){
@@ -2507,8 +2508,8 @@
                         }
                         const data = await this.fetchData('/delete',"POST",obj)
                         if(data === false){
-                            localStorage.clear()
-                            window.location.href="/expired"
+                            // localStorage.clear()
+                            // window.location.href="/expired"
                             return
                         }
                         else if(data["message"] === "Task deleted and subsequent assignments deleted"){
@@ -2543,8 +2544,8 @@
                         }
                         const data = await this.fetchData('/complete',"POST",obj)
                         if(data === false){
-                            localStorage.clear()
-                            window.location.href="/expired"
+                            // localStorage.clear()
+                            // window.location.href="/expired"
                             return
                         }
                         else if(data["message"] === "Task marked complete successfully"){
@@ -2567,8 +2568,8 @@
                    try{
                         const data = await this.fetchData('/logout',"POST",null)
                         if(data === false){
-                            localStorage.clear()
-                            window.location.href="/expired"
+                            // localStorage.clear()
+                            // window.location.href="/expired"
                             return
                         }
                         else if(data["message"] === "Logged out successfully"){
@@ -2589,8 +2590,8 @@
                     try{
                         const data = await  this.fetchData('/map','GET')
                         if(data == false){
-                            localStorage.clear()
-                            window.location.href="/expired"
+                            // localStorage.clear()
+                            // window.location.href="/expired"
                             return
                         }
                         else if(data["message"] === "successful"){

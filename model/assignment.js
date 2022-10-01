@@ -58,6 +58,11 @@ const AssignSchema = new Schema({
       type : Date,
       required : false
     },
+    isTeamJob : {
+      type : Boolean,
+      required : true,
+      default : false
+    }
   });
   AssignSchema.index({ task_id: 1, worker_id: 1}, { unique: true });
 
