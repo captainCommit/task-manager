@@ -287,7 +287,7 @@
                             password : md5(this.loginObject.password),
                             role : this.loginObject.role
                         }
-                        var resp = await fetch(`${unsecureApiUrl}/login`,{
+                        var resp = await fetch(`${this.unsecureApiUrl}/login`,{
                             method : "POST",
                             credentials : "include",
                             headers: {
@@ -358,7 +358,7 @@
                             password : md5(this.registerObject.password),
                             role : this.registerObject.role
                         }
-                        var resp = await fetch(`${unsecureApiUrl}/signup`,{
+                        var resp = await fetch(`${this.unsecureApiUrl}/signup`,{
                             method : "POST",
                             headers: {
                                 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'
